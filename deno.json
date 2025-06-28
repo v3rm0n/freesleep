@@ -1,0 +1,27 @@
+{
+  "imports": {
+    "@biomejs/biome": "npm:@biomejs/biome@^2.0.6",
+    "@hono/zod-validator": "npm:@hono/zod-validator@^0.7.0",
+    "hono": "npm:hono@^4.8.3",
+    "zod": "npm:zod@^3.25.67"
+  },
+  "tasks": {
+    "start": "deno run --allow-net --unstable-cron main.ts",
+    "lint": "deno run -A npm:@biomejs/biome lint --write",
+    "format": "deno run -A npm:@biomejs/biome format --write",
+    "check": "deno run -A npm:@biomejs/biome check --write"
+  },
+  "compilerOptions": {
+    "jsx": "precompile",
+    "jsxImportSource": "hono/jsx",
+    "strict": true
+  },
+  "deploy": {
+    "project": "5305b3f8-c630-442b-8f4d-c90be024a7f7",
+    "exclude": [
+      "**/node_modules"
+    ],
+    "include": [],
+    "entrypoint": "main.ts"
+  }
+}

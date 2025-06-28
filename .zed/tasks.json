@@ -1,0 +1,93 @@
+[
+	{
+		"label": "deno: run",
+		"command": "deno",
+		"args": ["run", "main.ts"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: dev (watch)",
+		"command": "deno",
+		"args": ["run", "--watch", "main.ts"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: test",
+		"command": "deno",
+		"args": ["test"],
+		"group": "test",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: test (watch)",
+		"command": "deno",
+		"args": ["test", "--watch"],
+		"group": "test",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: fmt",
+		"command": "deno",
+		"args": ["fmt"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "silent",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: lint",
+		"command": "deno",
+		"args": ["lint"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "deno: check",
+		"command": "deno",
+		"args": ["check", "main.ts"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	}
+]

@@ -1,0 +1,157 @@
+{
+  "result": {
+    "deviceId": "510043000750314d35323620",
+    "ownerId": "045409770b124a7f89ce006e0c000000",
+    "leftUserId": "045409770b124a7f89ce006e0c000000",
+    "leftHeatingLevel": -24,
+    "leftTargetHeatingLevel": 0,
+    "leftNowHeating": false,
+    "leftHeatingDuration": 0,
+    "leftSchedule": {
+      "daysUTC": {
+        "sunday": false,
+        "monday": false,
+        "tuesday": false,
+        "wednesday": false,
+        "thursday": false,
+        "friday": false,
+        "saturday": false
+      },
+      "enabled": false
+    },
+    "rightUserId": "3d8ab168e289483e8d57a80c3f000000",
+    "rightHeatingLevel": -25,
+    "rightTargetHeatingLevel": 0,
+    "rightNowHeating": false,
+    "rightHeatingDuration": 0,
+    "rightSchedule": {
+      "daysUTC": {
+        "sunday": false,
+        "monday": false,
+        "tuesday": false,
+        "wednesday": false,
+        "thursday": false,
+        "friday": false,
+        "saturday": false
+      },
+      "enabled": false
+    },
+    "priming": false,
+    "lastLowWater": "2025-06-25T17:29:07.878Z",
+    "lastPrime": "2025-06-28T12:46:55.000Z",
+    "needsPriming": false,
+    "hasWater": true,
+    "ledBrightnessLevel": 20,
+    "sensorInfo": {
+      "label": "20600-0006-F00-0000D326",
+      "partNumber": "20600",
+      "sku": "0006",
+      "hwRevision": "F00",
+      "serialNumber": "0000D326",
+      "lastConnected": "2025-06-28T15:32:06.262Z",
+      "skuName": "doublexl",
+      "model": "Pod2.1",
+      "version": 2,
+      "connected": true
+    },
+    "sensors": [
+      {
+        "label": "20600-0006-F00-0000D326",
+        "partNumber": "20600",
+        "sku": "0006",
+        "hwRevision": "F00",
+        "serialNumber": "0000D326",
+        "lastConnected": "2025-06-28T15:32:06.262Z",
+        "skuName": "doublexl",
+        "model": "Pod2.1",
+        "version": 2,
+        "connected": true
+      }
+    ],
+    "expectedPeripherals": null,
+    "hubInfo": "20500-0001-E02-0000D219",
+    "timezone": "Europe/Tallinn",
+    "location": [
+      21.3456407,
+      54.2378512
+    ],
+    "mattressInfo": {
+      "firstUsedDate": null,
+      "eightMattress": null,
+      "brand": null
+    },
+    "firmwareCommit": "3c50bb5",
+    "firmwareVersion": "2.4.3.0",
+    "firmwareUpdated": true,
+    "firmwareUpdating": false,
+    "lastFirmwareUpdateStart": "1970-01-01T00:00:00.000+00:00",
+    "lastHeard": "2025-06-28T15:32:06.262Z",
+    "online": true,
+    "encasementType": "pod-pro-cover",
+    "leftKelvin": {
+      "targetLevels": [
+        -58,
+        -42,
+        0
+      ],
+      "alarms": [],
+      "scheduleProfiles": [
+        {
+          "enabled": true,
+          "startLocalTime": "22:30:00",
+          "weekDays": {
+            "monday": true,
+            "tuesday": true,
+            "wednesday": true,
+            "thursday": true,
+            "friday": true,
+            "saturday": true,
+            "sunday": true
+          }
+        }
+      ],
+      "phases": [],
+      "level": 0,
+      "currentTargetLevel": 0,
+      "active": false,
+      "currentActivity": "off"
+    },
+    "rightKelvin": {
+      "targetLevels": [
+        0,
+        0,
+        0
+      ],
+      "alarms": [],
+      "scheduleProfiles": [],
+      "phases": [],
+      "level": 0,
+      "currentTargetLevel": 0,
+      "active": false,
+      "currentActivity": "off"
+    },
+    "features": [
+      "warming",
+      "cooling",
+      "vibration",
+      "alarms"
+    ],
+    "leftUserInvitationPending": false,
+    "rightUserInvitationPending": false,
+    "modelString": "Pod 2 Pro",
+    "hubSerial": "0000D219",
+    "wifiInfo": {
+      "signalStrength": -67,
+      "ssid": "Wifi",
+      "ipAddr": "192.168.88.43",
+      "macAddr": "3:2b:1b:1b:12:10",
+      "asOf": "2025-06-28T15:32:06.262Z"
+    },
+    "awaySides": {
+      "leftUserId": "045409770b124a7f89ce006e0c000000",
+      "rightUserId": "3d8ab168e289483e8d57a80c3f000000"
+    },
+    "isTemperatureAvailable": true,
+    "deactivated": {}
+  }
+}
