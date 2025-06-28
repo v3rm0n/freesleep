@@ -1,63 +1,59 @@
 {
-  "currentLevel": 0,
-  "currentDeviceLevel": -25,
-  "overrideLevels": {},
-  "currentState": {
-    "type": "off",
-    "started": "2025-06-27T20:35:51Z",
-    "instance": {
-      "timestamp": "2025-06-27T20:35:51Z"
-    }
-  },
-  "scheduleType": "timeBased",
-  "smart": {
-    "bedTimeLevel": 0,
-    "initialSleepLevel": 0,
-    "finalSleepLevel": 0
-  },
-  "timeBased": {
-    "level": 0,
-    "durationSeconds": 0
-  },
-  "currentSchedule": {
-    "id": "10256138-44f9-4c54-9a78-d3e8cf2ff9eb",
-    "enabled": true,
-    "time": "22:30:00",
-    "days": [
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday",
-      "sunday"
-    ],
-    "tags": [
-      "routine-d4c5816d-3b30-451a-9eed-6345700a16f6"
-    ],
-    "startSettings": {}
-  },
-  "nextSchedule": {
-    "nextTimestamp": "2025-06-28T19:30:00Z",
-    "id": "10256138-44f9-4c54-9a78-d3e8cf2ff9eb",
-    "enabled": true,
-    "time": "22:30:00",
-    "days": [
-      "monday",
-      "tuesday",
-      "wednesday",
-      "thursday",
-      "friday",
-      "saturday",
-      "sunday"
-    ],
-    "tags": [
-      "routine-d4c5816d-3b30-451a-9eed-6345700a16f6"
-    ],
-    "startSettings": {}
-  },
-  "nextBedtimeDisplayWindow": {
-    "displayWindowHours": 16,
-    "nextTimestampInWindow": true
-  }
+	"currentLevel": 0,
+	"currentDeviceLevel": -25,
+	"overrideLevels": {},
+	"currentState": {
+		"type": "off",
+		"started": "2025-06-27T20:35:51Z",
+		"instance": {
+			"timestamp": "2025-06-27T20:35:51Z"
+		}
+	},
+	"scheduleType": "timeBased",
+	"smart": {
+		"bedTimeLevel": 0,
+		"initialSleepLevel": 0,
+		"finalSleepLevel": 0
+	},
+	"timeBased": {
+		"level": 0,
+		"durationSeconds": 0
+	},
+	"currentSchedule": {
+		"id": "10256138-44f9-4c54-9a78-d3e8cf2ff9eb",
+		"enabled": true,
+		"time": "22:30:00",
+		"days": [
+			"monday",
+			"tuesday",
+			"wednesday",
+			"thursday",
+			"friday",
+			"saturday",
+			"sunday"
+		],
+		"tags": ["routine-d4c5816d-3b30-451a-9eed-6345700a16f6"],
+		"startSettings": {}
+	},
+	"nextSchedule": {
+		"nextTimestamp": "2025-06-28T19:30:00Z",
+		"id": "10256138-44f9-4c54-9a78-d3e8cf2ff9eb",
+		"enabled": true,
+		"time": "22:30:00",
+		"days": [
+			"monday",
+			"tuesday",
+			"wednesday",
+			"thursday",
+			"friday",
+			"saturday",
+			"sunday"
+		],
+		"tags": ["routine-d4c5816d-3b30-451a-9eed-6345700a16f6"],
+		"startSettings": {}
+	},
+	"nextBedtimeDisplayWindow": {
+		"displayWindowHours": 16,
+		"nextTimestampInWindow": true
+	}
 }

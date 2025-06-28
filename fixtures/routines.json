@@ -1,29 +1,29 @@
 {
-  "settings": {
-    "routines": [
-      {
-        "id": "d4c5816d-3b30-451a-9eed-6345700a16f6",
-        "alarms": [],
-        "days": [
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-          "sunday"
-        ],
-        "enabled": true,
-        "bedtime": {
-          "time": "22:30:00",
-          "dayOffset": "Zero"
-        }
-      }
-    ],
-    "oneOffAlarms": []
-  },
-  "state": {
-    "status": "Next",
-    "upcomingRoutineId": "d4c5816d-3b30-451a-9eed-6345700a16f6"
-  }
+	"settings": {
+		"routines": [
+			{
+				"id": "d4c5816d-3b30-451a-9eed-6345700a16f6",
+				"alarms": [],
+				"days": [
+					"monday",
+					"tuesday",
+					"wednesday",
+					"thursday",
+					"friday",
+					"saturday",
+					"sunday"
+				],
+				"enabled": true,
+				"bedtime": {
+					"time": "22:30:00",
+					"dayOffset": "Zero"
+				}
+			}
+		],
+		"oneOffAlarms": []
+	},
+	"state": {
+		"status": "Next",
+		"upcomingRoutineId": "d4c5816d-3b30-451a-9eed-6345700a16f6"
+	}
 }

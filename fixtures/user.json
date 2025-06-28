@@ -1,53 +1,46 @@
 {
-  "user": {
-    "userId": "045409770b124a7f89ce006e0c000000",
-    "email": "test@example.com",
-    "firstName": "Peeter",
-    "lastName": "Meeter",
-    "gender": "male",
-    "dob": "1989-11-19T21:00:00.000Z",
-    "zip": 11111,
-    "emailVerified": false,
-    "sharingMetricsTo": [],
-    "sharingMetricsFrom": [],
-    "notifications": {
-      "weeklyReportEmail": true,
-      "sessionProcessed": true,
-      "temperatureRecommendation": true,
-      "healthInsight": true,
-      "sleepInsight": true,
-      "marketingUpdates": false,
-      "bedtimeReminder": true,
-      "alarmWakeupPush": true
-    },
-    "displaySettings": {
-      "useRealTemperatures": true,
-      "measurementSystem": "metric"
-    },
-    "createdAt": "2024-07-03T14:01:24.184Z",
-    "experimentalFeatures": false,
-    "autopilotEnabled": false,
-    "lastReset": "1970-01-01T00:00:00.000Z",
-    "nextReset": "2100-01-01T00:00:00.000Z",
-    "sleepTracking": {
-      "enabledSince": "1970-01-01T00:00:00.000Z"
-    },
-    "features": [
-      "warming",
-      "cooling",
-      "vibration",
-      "alarms"
-    ],
-    "currentDevice": {
-      "id": "510043000750314d35323620",
-      "side": "left",
-      "timeZone": "Europe/Tallinn",
-      "specialization": "pod"
-    },
-    "tempPreferenceUpdatedAt": "2025-06-25T19:13:32.721Z",
-    "hotelGuest": false,
-    "devices": [
-      "510043000750314d35323620"
-    ]
-  }
+	"user": {
+		"userId": "045409770b124a7f89ce006e0c000000",
+		"email": "test@example.com",
+		"firstName": "Peeter",
+		"lastName": "Meeter",
+		"gender": "male",
+		"dob": "1989-11-19T21:00:00.000Z",
+		"zip": 11111,
+		"emailVerified": false,
+		"sharingMetricsTo": [],
+		"sharingMetricsFrom": [],
+		"notifications": {
+			"weeklyReportEmail": true,
+			"sessionProcessed": true,
+			"temperatureRecommendation": true,
+			"healthInsight": true,
+			"sleepInsight": true,
+			"marketingUpdates": false,
+			"bedtimeReminder": true,
+			"alarmWakeupPush": true
+		},
+		"displaySettings": {
+			"useRealTemperatures": true,
+			"measurementSystem": "metric"
+		},
+		"createdAt": "2024-07-03T14:01:24.184Z",
+		"experimentalFeatures": false,
+		"autopilotEnabled": false,
+		"lastReset": "1970-01-01T00:00:00.000Z",
+		"nextReset": "2100-01-01T00:00:00.000Z",
+		"sleepTracking": {
+			"enabledSince": "1970-01-01T00:00:00.000Z"
+		},
+		"features": ["warming", "cooling", "vibration", "alarms"],
+		"currentDevice": {
+			"id": "510043000750314d35323620",
+			"side": "left",
+			"timeZone": "Europe/Tallinn",
+			"specialization": "pod"
+		},
+		"tempPreferenceUpdatedAt": "2025-06-25T19:13:32.721Z",
+		"hotelGuest": false,
+		"devices": ["510043000750314d35323620"]
+	}
 }
