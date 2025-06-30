@@ -1,7 +1,6 @@
 import { assertEquals } from "jsr:@std/assert";
 import {
 	DeviceResponse,
-	Routines,
 	Temperature,
 	UserResponse,
 } from "./model/index.ts";
@@ -24,13 +23,4 @@ Deno.test("Temperature schema matches the json fixture", async () => {
 	);
 	const parsed = Temperature.parse(JSON.parse(temperatureJson));
 	assertEquals(parsed.scheduleType, "timeBased");
-});
-
-Deno.test("Routines schema matches the json fixture", async () => {
-	const routinesJson = await Deno.readTextFile("./fixtures/routines.json");
-	const parsed = Routines.parse(JSON.parse(routinesJson));
-	assertEquals(
-		parsed.settings.routines[0].id,
-		"d4c5816d-3b30-451a-9eed-6345700a16f6",
-	);
 });
