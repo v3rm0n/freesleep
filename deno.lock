@@ -2,7 +2,10 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@*": "1.0.13",
+    "jsr:@std/bytes@^1.0.6": "1.0.6",
+    "jsr:@std/crypto@^1.0.5": "1.0.5",
     "jsr:@std/internal@^1.0.6": "1.0.8",
+    "jsr:@std/uuid@^1.0.9": "1.0.9",
     "npm:@biomejs/biome@*": "2.0.6",
     "npm:@biomejs/biome@^2.0.6": "2.0.6",
     "npm:@hono/zod-validator@0.7": "0.7.0_hono@4.8.3_zod@3.25.67",
@@ -16,8 +19,21 @@
         "jsr:@std/internal"
       ]
     },
+    "@std/bytes@1.0.6": {
+      "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
+    },
+    "@std/crypto@1.0.5": {
+      "integrity": "0dcfbb319fe0bba1bd3af904ceb4f948cde1b92979ec1614528380ed308a3b40"
+    },
     "@std/internal@1.0.8": {
       "integrity": "fc66e846d8d38a47cffd274d80d2ca3f0de71040f855783724bb6b87f60891f5"
+    },
+    "@std/uuid@1.0.9": {
+      "integrity": "44b627bf2d372fe1bd099e2ad41b2be41a777fc94e62a3151006895a037f1642",
+      "dependencies": [
+        "jsr:@std/bytes",
+        "jsr:@std/crypto"
+      ]
     }
   },
   "npm": {
@@ -91,6 +107,7 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@std/uuid@^1.0.9",
       "npm:@biomejs/biome@^2.0.6",
       "npm:@hono/zod-validator@0.7",
       "npm:hono@^4.8.3",

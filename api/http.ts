@@ -1,14 +1,13 @@
 import {
-	type Login,
 	AccessToken,
-	UserResponse,
-	type User,
-	DeviceResponse,
-	type Device,
-	type HeatingLevel,
-	Routines,
-	Temperature,
 	CurrentDevice,
+	type Device,
+	DeviceResponse,
+	type HeatingLevel,
+	type Login,
+	Temperature,
+	type User,
+	UserResponse,
 } from "./model/index.ts";
 
 const AUTH_API_URL = "https://auth-api.8slp.net/v1/tokens";
@@ -23,7 +22,11 @@ export const login = async (login: Login): Promise<AccessToken> => {
 		headers: { "Content-Type": "application/json" },
 	});
 	console.log(`Status: ${response.status}`);
-	const accessToken = AccessToken.parse(await response.json());
+	const rawToken = await response.json();
+	const accessToken = AccessToken.parse({
+		...rawToken,
+		expires_at: Date.now() + rawToken.expires_in * 1000,
+	});
 	console.log(`Logged in as ${login.username}, userId: ${accessToken.userId}`);
 	return accessToken;
 };
@@ -59,23 +62,7 @@ export const device = async (
 	return response.result;
 };
 
-export const routines = async (
-	userId: string,
-	accessToken: AccessToken,
-): Promise<Routines> => {
-	return Routines.parse(
-		await (
-			await fetch(`${APP_API_URL}/users/${userId}/routines`, {
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${accessToken.access_token}`,
-				},
-			})
-		).json(),
-	);
-};
-
-export const temperature = async (
+export const getTemperature = async (
 	userId: string,
 	accessToken: AccessToken,
 ): Promise<Temperature> => {
@@ -90,12 +77,11 @@ export const temperature = async (
 };
 
 export const setTemperature = async (
-	userId: string,
 	level: HeatingLevel,
 	accessToken: AccessToken,
 ): Promise<void> => {
-	console.log("Setting temperature");
-	await fetch(`${APP_API_URL}/users/${userId}/temperature`, {
+	console.log(`Setting temperature ${level}`);
+	await fetch(`${APP_API_URL}/users/${accessToken.userId}/temperature`, {
 		method: "PUT",
 		headers: {
 			"Content-Type": "application/json",

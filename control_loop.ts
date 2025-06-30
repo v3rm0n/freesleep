@@ -1,57 +1,51 @@
-import * as z from "zod/v4";
-import { HeatingLevel } from "./api/model/index.ts";
-import { getTemperature } from "./api/api.ts";
-
-const HeatingState = z.object({
-	level: HeatingLevel,
-	time: z.iso.time(),
-});
-
-const ExpectedState = z
-	.object({
-		levels: z.array(HeatingState),
-	})
-	.nullable();
-
-const getCurrentState = async () => {
-	const temperature = await getTemperature();
-	return {
-		level: temperature.currentLevel,
-		time: new Date().toISOString(),
-	};
-};
-
-const getExpectedState = async () => {
-	const db = await Deno.openKv();
-	const { value } = await db.get(["expectedState"]);
-	const expectedState = ExpectedState.parse(value);
-	if (!expectedState) return null;
-	return expectedState.levels.findLast(
-		(level) => level.time <= new Date().toISOString(),
-	);
-};
-
-const isInitialized = async () => {
-	const db = await Deno.openKv();
-	const { value } = await db.get(["user"]);
-	return value !== null;
-};
+import { allCredentials } from "./credentials.ts";
+import { SessionId } from "./session.ts";
+import {
+	getCurrentHeatingState,
+	getExpectedHeatingState,
+	type HeatingState,
+	setCurrentHeatingState,
+} from "./state.ts";
 
 export const controlLoop = async () => {
 	try {
 		console.log("Starting control loop");
-		if (!isInitialized()) {
-			console.log("User not initialized");
-			return;
+		const credentials = await allCredentials();
+		for await (const credential of credentials) {
+			const {
+				key: [_, sessionId],
+			} = credential;
+			const parsedId = SessionId.parse(sessionId);
+			await reconcileState(
+				parsedId,
+				await getCurrentHeatingState(parsedId),
+				await getExpectedHeatingState(parsedId),
+			);
 		}
-		const currentState = await getCurrentState();
-		console.log("Current state:", currentState);
-		const expectedState = await getExpectedState();
-		console.log("Expected state:", expectedState);
-		if (currentState !== expectedState) {
-			console.log("State mismatch");
-		}
+		console.log("Control loop finished");
 	} catch (error) {
 		console.error("Error in control loop:", error);
 	}
+};
+
+const reconcileState = async (
+	sessionId: string,
+	currentState: HeatingState,
+	expectedState: HeatingState | null,
+) => {
+	console.log(`Reconciling state for ${sessionId}`);
+	if (!expectedState) {
+		console.log(`No expectations set for ${sessionId}`);
+		return;
+	}
+	if (currentState.level === expectedState.level) {
+		console.log(`States are equal for ${sessionId}`);
+		return;
+	}
+	if (currentState.level === 0) {
+		console.log(`Heating is off for ${sessionId}`);
+		return;
+	}
+	console.log(`States differ, need to reconcile`);
+	await setCurrentHeatingState(sessionId, expectedState.level);
 };

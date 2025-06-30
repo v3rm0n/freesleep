@@ -16,6 +16,7 @@ export const AccessToken = z.object({
 	expires_in: z.number(),
 	refresh_token: z.string(),
 	userId: z.string(),
+	expires_at: z.number(),
 });
 
 export type AccessToken = z.infer<typeof AccessToken>;
