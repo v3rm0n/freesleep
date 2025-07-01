@@ -5,6 +5,11 @@ project.currentStyle = {
 	fontSize: 12,
 	fillColor: "white"
 };
+
+var strokeWidth = 2;
+var xScale = view.size.width / 400;
+var yScale = view.size.height / 300;
+
 var graph = new Path();
 graph.strokeColor = "black";
 graph.fillColor = undefined;
@@ -34,10 +39,6 @@ fillPath.add(new Point(25, 275));
 fillPath.closed = true;
 fillPath.fillColor = "black";
 
-var strokeWidth = 2;
-var xScale = view.size.width / 400;
-var yScale = view.size.height / 300;
-
 var axes = new Path();
 axes.strokeColor = "grey";
 axes.fillColor = undefined;
@@ -45,7 +46,7 @@ axes.strokeWidth = strokeWidth;
 axes.add(new Point(25, 275));
 axes.add(new Point(375, 275));
 
-function createReferenceLine(x) {
+function createReferenceLine(x, time) {
 	var referenceLine = new Path();
 	referenceLine.strokeColor = "grey";
 	referenceLine.fillColor = undefined;
@@ -54,7 +55,7 @@ function createReferenceLine(x) {
 	referenceLine.strokeCap = "round";
 	referenceLine.dashArray = [10, 6];
 	referenceLine.add(new Point(x, 20));
-	referenceLine.add(new Point(x, 275));
+	referenceLine.add(new Point(x, 278));
 
 	var referenceText = new PointText({
 		point: [x, 10],
@@ -64,15 +65,23 @@ function createReferenceLine(x) {
 		justification: "center"
 	});
 
-	return new Group([referenceLine, referenceText]);
+	var referenceTime = new PointText({
+		point: [x, 290],
+		content: time,
+		fillColor: "grey",
+		fontSize: 10,
+		justification: "center"
+	});
+
+	return new Group([referenceLine, referenceTime, referenceText]);
 }
 
-var referenceLine0 = createReferenceLine(25);
-var referenceLine1 = createReferenceLine(95);
-var referenceLine2 = createReferenceLine(165);
-var referenceLine3 = createReferenceLine(235);
-var referenceLine4 = createReferenceLine(305);
-var referenceLine5 = createReferenceLine(375);
+var referenceLine0 = createReferenceLine(25, '22:00');
+var referenceLine1 = createReferenceLine(95, '00:00');
+var referenceLine2 = createReferenceLine(165, '02:00');
+var referenceLine3 = createReferenceLine(235, '04:00');
+var referenceLine4 = createReferenceLine(305, '06:00');
+var referenceLine5 = createReferenceLine(375, '08:00');
 
 var referenceLines = new Group([
 	referenceLine0,
