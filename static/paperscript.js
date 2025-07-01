@@ -1,0 +1,128 @@
+// This is a Paperscript file, not JavaScript
+// Assuming aspect ratio 4/3
+var graph = new Path();
+graph.strokeColor = 'black';
+//graph.fullySelected = true;
+var points = [new Point(25, 25),new Point(95, 30), new Point(165, 100), new Point(235, 200), new Point(305, 200), new Point(375, 50)];
+points.forEach(function(point) {
+    graph.add(point);
+    //point.fullySelected = true;
+});
+graph.smooth({type: 'catmull-rom'});
+
+var fillPath = new Path();
+// Add all the curve points
+points.forEach(function(point) {
+    fillPath.add(point);
+});
+
+fillPath.add(new Point(375, 275));
+fillPath.add(new Point(25, 275));
+fillPath.closed = true;
+
+var strokeWidth = 5;
+var xScale = view.size.width / 400;
+var yScale = view.size.height / 300;
+
+var axes = new Path();
+axes.strokeColor = 'grey';
+axes.strokeWidth = strokeWidth;
+axes.add(new Point(25, 25));
+axes.add(new Point(25, 275));
+axes.add(new Point(375, 275));
+
+function smoothFillPath() {
+  var curveSegmentCount = graph.segments.length;
+  for (var i = 0; i < fillPath.segments.length; i++) {
+      if (i > 0 && i < curveSegmentCount - 1) {
+          // Smooth only the middle curve segments
+          fillPath.segments[i].smooth({type: 'catmull-rom'});
+      } else {
+          // Keep first curve point, last curve point, and bottom segments sharp
+          fillPath.segments[i].smooth = false;
+      }
+  }
+}
+
+smoothFillPath();
+
+var allElements = new Group([graph, axes, fillPath]);
+
+allElements.scale(xScale, yScale, new Point(0,0));
+
+function createHorizontalGradient() {
+    var gradientStops = [];
+    var curveSegments = fillPath.segments.slice(0, 6);
+    var xStart = curveSegments[0].point.x;
+    var xEnd = curveSegments[curveSegments.length - 1].point.x;
+    var xRange = xEnd - xStart;
+
+    var orange = new Color(1.0, 0.35, 0.0);
+    var blue = new Color(0.0, 0.0, 1.0);
+
+    curveSegments.forEach(function(segment) {
+        var point = segment.point;
+        var t = point.y / (300 * yScale);
+        t = Math.max(0, Math.min(1, t));
+
+        var r = orange.red + (blue.red - orange.red) * t;
+        var g = orange.green + (blue.green - orange.green) * t;
+        var b = orange.blue + (blue.blue - orange.blue) * t;
+
+        var color = new Color(r, g, b);
+        var offset = (point.x - xStart) / xRange;
+
+        gradientStops.push(new GradientStop(color, offset));
+    });
+
+    var gradient = new Gradient(gradientStops);
+    fillPath.fillColor = new Color(gradient, new Point(xStart, 0), new Point(xEnd, 0));
+}
+
+createHorizontalGradient();
+
+function closestSegment(path, point) {
+  var minDistance = undefined;
+  var closestSegment = path.segments[0];
+  path.segments.forEach(function(segment) {
+    var distance = segment.point.getDistance(point);
+    if(distance < minDistance || minDistance === undefined) {
+      minDistance = distance;
+      closestSegment = segment;
+    }
+  });
+  return closestSegment;
+}
+
+function onMouseDrag(event) {
+  var segment = closestSegment(graph, event.point);
+  var newY = Math.max(Math.min(event.point.y, 275*yScale), 25*yScale);
+  segment.point.y = newY;
+  graph.smooth({type: 'catmull-rom'});
+
+  var fillSegment = fillPath.segments[graph.segments.indexOf(segment)];
+  if (fillSegment) {
+    fillSegment.point.y = newY;
+  }
+  smoothFillPath();
+  createHorizontalGradient();
+  axes.bringToFront();
+}
+function onResize(event) {
+  // Calculate new absolute scale factors
+   var newXScale = event.size.width / 400;
+   var newYScale = event.size.height / 300;
+
+   // Calculate the relative scale from current to new
+   var relativeXScale = newXScale / xScale;
+   var relativeYScale = newYScale / yScale;
+
+   // Apply the relative scaling
+   allElements.scale(relativeXScale, relativeYScale, new Point(0,0));
+
+   // Update the current scale factors
+   xScale = newXScale;
+   yScale = newYScale;
+}
+
+axes.bringToFront();

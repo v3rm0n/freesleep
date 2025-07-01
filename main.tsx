@@ -17,11 +17,18 @@ import {
 	getExpectedState,
 	setExpectedState,
 } from "./state.ts";
-
+import { App } from "./ui/app.tsx";
+import { serveStatic } from 'hono/deno';
 type Variables = { bearerToken: SessionId };
 const app = new Hono<{ Variables: Variables }>();
 
 app.use(logger());
+
+app.get('/', (c) => {
+  return c.html(<App />);
+});
+
+app.use('*', serveStatic({ root: './static' }))
 
 const authenticated = bearerAuth({
 	verifyToken: async (token, c) => {
