@@ -76,12 +76,12 @@ function createReferenceLine(x, time) {
 	return new Group([referenceLine, referenceTime, referenceText]);
 }
 
-var referenceLine0 = createReferenceLine(25, '22:00');
-var referenceLine1 = createReferenceLine(95, '00:00');
-var referenceLine2 = createReferenceLine(165, '02:00');
-var referenceLine3 = createReferenceLine(235, '04:00');
-var referenceLine4 = createReferenceLine(305, '06:00');
-var referenceLine5 = createReferenceLine(375, '08:00');
+var referenceLine0 = createReferenceLine(25, "22:00");
+var referenceLine1 = createReferenceLine(95, "00:00");
+var referenceLine2 = createReferenceLine(165, "02:00");
+var referenceLine3 = createReferenceLine(235, "04:00");
+var referenceLine4 = createReferenceLine(305, "06:00");
+var referenceLine5 = createReferenceLine(375, "08:00");
 
 var referenceLines = new Group([
 	referenceLine0,
