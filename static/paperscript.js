@@ -1,7 +1,13 @@
 // This is a Paperscript file, not JavaScript
 // Assuming aspect ratio 4/3
+project.currentStyle = {
+  fontFamily: 'SF Pro Display',
+  fontSize: 12,
+  fillColor: 'white'
+};
 var graph = new Path();
 graph.strokeColor = 'black';
+graph.fillColor = undefined;
 //graph.fullySelected = true;
 var points = [new Point(25, 25),new Point(95, 30), new Point(165, 100), new Point(235, 200), new Point(305, 200), new Point(375, 50)];
 points.forEach(function(point) {
@@ -19,17 +25,28 @@ points.forEach(function(point) {
 fillPath.add(new Point(375, 275));
 fillPath.add(new Point(25, 275));
 fillPath.closed = true;
+fillPath.fillColor = 'black';
 
-var strokeWidth = 5;
+var strokeWidth = 4;
 var xScale = view.size.width / 400;
 var yScale = view.size.height / 300;
 
 var axes = new Path();
 axes.strokeColor = 'grey';
+axes.fillColor = undefined;
 axes.strokeWidth = strokeWidth;
+axes.strokeJoin = 'round';
+axes.strokeCap = 'round';
 axes.add(new Point(25, 25));
 axes.add(new Point(25, 275));
 axes.add(new Point(375, 275));
+
+var maxTemp = new PointText({point: [20,30], content: '30', justification: 'right'});
+var midTemp = new PointText({point: [20,(275+30)/2], content: '22', justification: 'right'});
+var minTemp = new PointText({point: [20,275], content: '13', justification: 'right'});
+
+var currentTemp = new PointText({point: [20,30], content: '30', justification: 'center'});
+currentTemp.visible = false;
 
 function smoothFillPath() {
   var curveSegmentCount = graph.segments.length;
@@ -46,7 +63,7 @@ function smoothFillPath() {
 
 smoothFillPath();
 
-var allElements = new Group([graph, axes, fillPath]);
+var allElements = new Group([graph, axes, fillPath, maxTemp, midTemp, minTemp, currentTemp]);
 
 allElements.scale(xScale, yScale, new Point(0,0));
 
@@ -62,7 +79,7 @@ function createHorizontalGradient() {
 
     curveSegments.forEach(function(segment) {
         var point = segment.point;
-        var t = point.y / (300 * yScale);
+        var t = point.y / (200 * yScale);
         t = Math.max(0, Math.min(1, t));
 
         var r = orange.red + (blue.red - orange.red) * t;
@@ -85,7 +102,7 @@ function closestSegment(path, point) {
   var minDistance = undefined;
   var closestSegment = path.segments[0];
   path.segments.forEach(function(segment) {
-    var distance = segment.point.getDistance(point);
+    var distance = Math.abs(segment.point.x - point.x);
     if(distance < minDistance || minDistance === undefined) {
       minDistance = distance;
       closestSegment = segment;
@@ -99,6 +116,8 @@ function onMouseDrag(event) {
   var newY = Math.max(Math.min(event.point.y, 275*yScale), 25*yScale);
   segment.point.y = newY;
   graph.smooth({type: 'catmull-rom'});
+  currentTemp.point.y = newY-25;
+  currentTemp.point.x = segment.point.x;
 
   var fillSegment = fillPath.segments[graph.segments.indexOf(segment)];
   if (fillSegment) {
@@ -123,6 +142,16 @@ function onResize(event) {
    // Update the current scale factors
    xScale = newXScale;
    yScale = newYScale;
+}
+
+function onMouseDown(event) {
+  currentTemp.point.y = event.point.y-25;
+  currentTemp.point.x = event.point.x;
+  currentTemp.visible = true;
+}
+
+function onMouseUp(event) {
+  currentTemp.visible = false;
 }
 
 axes.bringToFront();

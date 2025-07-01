@@ -4,9 +4,9 @@ const Layout: FC = (props) => {
   return (
     <html>
       <head>
+      <link href="https://fonts.cdnfonts.com/css/sf-pro-display" rel="stylesheet"/>
       <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/paper.js/0.12.18/paper-full.min.js"/>
       <script type="text/paperscript" canvas="graph" src="paperscript.js"/>
-      <link href="https://fonts.cdnfonts.com/css/sf-pro-display" rel="stylesheet"/>
       <link rel="stylesheet" href="style.css"/>
       <title>FreeSleep</title>
       </head>
