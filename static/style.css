@@ -18,8 +18,15 @@ canvas[resize] {
 }
 
 h1 {
-	margin: 0;
+	margin: 10;
 	padding: 0;
 	font-size: 2em;
+	text-align: center;
+}
+
+p {
+	margin: 10;
+	padding: 0;
+	font-size: 1em;
 	text-align: center;
 }

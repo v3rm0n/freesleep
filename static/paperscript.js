@@ -34,7 +34,7 @@ fillPath.add(new Point(25, 275));
 fillPath.closed = true;
 fillPath.fillColor = "black";
 
-var strokeWidth = 4;
+var strokeWidth = 2;
 var xScale = view.size.width / 400;
 var yScale = view.size.height / 300;
 
@@ -42,11 +42,46 @@ var axes = new Path();
 axes.strokeColor = "grey";
 axes.fillColor = undefined;
 axes.strokeWidth = strokeWidth;
-axes.strokeJoin = "round";
-axes.strokeCap = "round";
-axes.add(new Point(25, 25));
 axes.add(new Point(25, 275));
 axes.add(new Point(375, 275));
+
+function createReferenceLine(x) {
+	var referenceLine = new Path();
+	referenceLine.strokeColor = "grey";
+	referenceLine.fillColor = undefined;
+	referenceLine.strokeWidth = strokeWidth;
+	referenceLine.strokeJoin = "round";
+	referenceLine.strokeCap = "round";
+	referenceLine.dashArray = [10, 6];
+	referenceLine.add(new Point(x, 20));
+	referenceLine.add(new Point(x, 275));
+
+	var referenceText = new PointText({
+		point: [x, 10],
+		content: x,
+		fillColor: "grey",
+		fontSize: 10,
+		justification: "center"
+	});
+
+	return new Group([referenceLine, referenceText]);
+}
+
+var referenceLine0 = createReferenceLine(25);
+var referenceLine1 = createReferenceLine(95);
+var referenceLine2 = createReferenceLine(165);
+var referenceLine3 = createReferenceLine(235);
+var referenceLine4 = createReferenceLine(305);
+var referenceLine5 = createReferenceLine(375);
+
+var referenceLines = new Group([
+	referenceLine0,
+	referenceLine1,
+	referenceLine2,
+	referenceLine3,
+	referenceLine4,
+	referenceLine5
+]);
 
 var maxTemp = new PointText({
 	point: [20, 30],
@@ -63,13 +98,6 @@ var minTemp = new PointText({
 	content: "13",
 	justification: "right"
 });
-
-var currentTemp = new PointText({
-	point: [20, 30],
-	content: "30",
-	justification: "center"
-});
-currentTemp.visible = false;
 
 function smoothFillPath() {
 	var i;
@@ -94,7 +122,7 @@ var allElements = new Group([
 	maxTemp,
 	midTemp,
 	minTemp,
-	currentTemp
+	referenceLines
 ]);
 
 allElements.scale(xScale, yScale, new Point(0, 0));
@@ -147,18 +175,23 @@ function closestSegment(path, point) {
 	return closestSegment;
 }
 
+function yToTemperature(y) {
+	return Math.abs(Math.round(((y / yScale) * 17) / 250) - 2 - 30);
+}
+
 view.onMouseDrag = function (event) {
 	var segment = closestSegment(graph, event.point);
 	var newY = Math.max(Math.min(event.point.y, 275 * yScale), 25 * yScale);
 	segment.point.y = newY;
 	graph.smooth({ type: "catmull-rom" });
-	currentTemp.point.y = newY - 25;
-	currentTemp.point.x = segment.point.x;
 
-	var fillSegment = fillPath.segments[graph.segments.indexOf(segment)];
+	var index = graph.segments.indexOf(segment);
+
+	var fillSegment = fillPath.segments[index];
 	if (fillSegment) {
 		fillSegment.point.y = newY;
 	}
+	referenceLines.children[index].lastChild.content = yToTemperature(newY);
 	smoothFillPath();
 	createHorizontalGradient();
 	axes.bringToFront();
@@ -178,16 +211,13 @@ view.onResize = function (event) {
 	// Update the current scale factors
 	xScale = newXScale;
 	yScale = newYScale;
-};
 
-view.onMouseDown = function (event) {
-	currentTemp.point.y = event.point.y - 25;
-	currentTemp.point.x = event.point.x;
-	currentTemp.visible = true;
-};
+	graph.segments.forEach(function (segment) {
+		referenceLines.children[graph.segments.indexOf(segment)].lastChild.content =
+			yToTemperature(segment.point.y);
+	});
 
-view.onMouseUp = function (_event) {
-	currentTemp.visible = false;
+	referenceLines.sendToBack();
 };
 
 axes.bringToFront();
