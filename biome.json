@@ -30,5 +30,22 @@
 				"organizeImports": "on"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["static/paperscript.js"],
+			"javascript": {
+				"formatter": {
+					"trailingCommas": "none"
+				}
+			},
+			"linter": {
+				"rules": {
+					"complexity": {
+						"useArrowFunction": "off"
+					}
+				}
+			}
+		}
+	]
 }

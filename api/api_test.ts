@@ -1,9 +1,5 @@
 import { assertEquals } from "jsr:@std/assert";
-import {
-	DeviceResponse,
-	Temperature,
-	UserResponse,
-} from "./model/index.ts";
+import { DeviceResponse, Temperature, UserResponse } from "./model/index.ts";
 
 Deno.test("User schema matches the json fixture", async () => {
 	const userJson = await Deno.readTextFile("./fixtures/user.json");

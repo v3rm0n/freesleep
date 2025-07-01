@@ -7,7 +7,7 @@
     "zod": "npm:zod@^3.25.67"
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read=static --unstable-cron --unstable-kv --watch main.tsx",
+    "start": "deno run --allow-net --allow-read=static --unstable-cron --unstable-kv --watch main.ts",
     "lint": "deno run -A npm:@biomejs/biome lint --write",
     "format": "deno run -A npm:@biomejs/biome format --write",
     "check": "deno run -A npm:@biomejs/biome check --write",
