@@ -132,21 +132,35 @@ function createHorizontalGradient() {
 	var xEnd = curveSegments[curveSegments.length - 1].point.x;
 	var xRange = xEnd - xStart;
 
-	var orange = new Color(1.0, 0.35, 0.0);
-	var blue = new Color(0.0, 0.0, 1.0);
+	// Define base colors
+	var orange = new Color(1.0, 1.0, 0.0); // strong orange
+	var blue = new Color(0.0, 0.4, 1.0); // strong blue
+	var neutral = new Color(0.9, 0.1, 0.0); // warm gray/neutral
 
 	curveSegments.forEach(function (segment) {
 		var point = segment.point;
-		var t = point.y / (200 * yScale);
+		var t = point.y / (170 * yScale);
 		t = Math.max(0, Math.min(1, t));
 
-		var r = orange.red + (blue.red - orange.red) * t;
-		var g = orange.green + (blue.green - orange.green) * t;
-		var b = orange.blue + (blue.blue - orange.blue) * t;
+		var r, g, b, f;
+
+		// First half: orange → neutral
+		if (t < 0.5) {
+			f = t / 0.5;
+			r = orange.red + (neutral.red - orange.red) * f;
+			g = orange.green + (neutral.green - orange.green) * f;
+			b = orange.blue + (neutral.blue - orange.blue) * f;
+		}
+		// Second half: neutral → blue
+		else {
+			f = (t - 0.5) / 0.5;
+			r = neutral.red + (blue.red - neutral.red) * f;
+			g = neutral.green + (blue.green - neutral.green) * f;
+			b = neutral.blue + (blue.blue - neutral.blue) * f;
+		}
 
 		var color = new Color(r, g, b);
 		var offset = (point.x - xStart) / xRange;
-
 		gradientStops.push(new GradientStop(color, offset));
 	});
 
