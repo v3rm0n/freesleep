@@ -24,8 +24,6 @@ const Layout: FC = (props) => {
 export const App: FC = () => {
 	return (
 		<Layout>
-			<h1>Eight Sleep</h1>
-			<p>Set the temperature for your sleep cycle</p>
 			<canvas id="graph" resize></canvas>
 		</Layout>
 	);
