@@ -43,6 +43,10 @@
 				"rules": {
 					"complexity": {
 						"useArrowFunction": "off"
+					},
+					"style": {
+						"useTemplate": "off",
+						"useExponentiationOperator": "off"
 					}
 				}
 			}
