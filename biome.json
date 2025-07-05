@@ -3,10 +3,11 @@
 	"vcs": {
 		"enabled": false,
 		"clientKind": "git",
-		"useIgnoreFile": false
+		"useIgnoreFile": true
 	},
 	"files": {
-		"ignoreUnknown": false
+		"ignoreUnknown": false,
+		"includes": ["**", "!**/dist/**", "!**/.vite/**"]
 	},
 	"formatter": {
 		"enabled": true,

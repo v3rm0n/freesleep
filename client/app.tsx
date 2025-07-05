@@ -9,5 +9,8 @@ function App() {
 	return <Graph />;
 }
 
+// biome-ignore-start lint/style/noNonNullAssertion: ignore
 const root = document.getElementById("root")!;
+// biome-ignore-end lint/style/noNonNullAssertion: ignore
+
 render(<App />, root);
