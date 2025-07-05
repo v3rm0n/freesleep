@@ -21,7 +21,7 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: v2.x
+          deno-version: v1.x
 
       - name: Install Node.js
         uses: actions/setup-node@v4
@@ -41,4 +41,4 @@ jobs:
           entrypoint: "main.tsx"
           root: ""
           
-          exclude: **/node_modules
+          
