@@ -1,13 +1,13 @@
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
-import { retrieveAccessToken } from "./api/access_token.ts";
 import {
 	Credentials,
 	getCredentials,
 	hasCredentials,
 	storeCredentials,
 } from "./credentials.ts";
+import { retrieveAccessToken } from "./eightsleep_api/access_token.ts";
 import { createSession, removeSession, SessionId } from "./session.ts";
 import {
 	ExpectedState,

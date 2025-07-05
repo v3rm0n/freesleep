@@ -1,5 +1,5 @@
 import * as z from "zod/v4";
-import { removeAccessToken } from "./api/access_token.ts";
+import { removeAccessToken } from "./eightsleep_api/access_token.ts";
 import { type Credentials, removeCredentials } from "./credentials.ts";
 
 export const SessionId = z.uuid();

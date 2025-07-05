@@ -1,7 +1,7 @@
 import * as z from "zod/v4";
-import { resolveAccessToken } from "./api/access_token.ts";
-import * as http from "./api/http.ts";
-import { HeatingLevel } from "./api/model/index.ts";
+import { resolveAccessToken } from "./eightsleep_api/access_token.ts";
+import * as http from "./eightsleep_api/http.ts";
+import { HeatingLevel } from "./eightsleep_api/model/index.ts";
 import type { SessionId } from "./session.ts";
 
 const HeatingState = z.object({
