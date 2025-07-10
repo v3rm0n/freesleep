@@ -8,8 +8,7 @@ const app = new Hono();
 
 app.use(logger());
 
-app.get("/client.js", serveStatic({ path: "./dist/client.js" }));
-app.get("*", serveStatic({ root: "./public" }));
+app.get("*", serveStatic({ path: "./dist" }));
 
 app.route("/", index);
 

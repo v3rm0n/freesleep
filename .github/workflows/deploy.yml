@@ -30,6 +30,5 @@ jobs:
         uses: denoland/deployctl@v1
         with:
           project: "freesleep"
-          entrypoint: "src/main.tsx"
-          root: ""
-          exclude: "**/.vite"
+          entrypoint: "src/deno.ts"
+          exclude: "node_modules/**"

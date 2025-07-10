@@ -38,6 +38,6 @@
       "**/node_modules"
     ],
     "include": [],
-    "entrypoint": "src/main.tsx"
+    "entrypoint": "src/deno.ts"
   }
 }
