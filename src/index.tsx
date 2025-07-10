@@ -1,9 +1,15 @@
 /** @jsxRuntime automatic @jsxImportSource hono/jsx */
-
 import { Hono } from "hono";
+import { serveStatic } from "hono/deno";
+import { logger } from "hono/logger";
 import api from "./api.ts";
+import { controlLoop } from "./control_loop.ts";
 
 const app = new Hono();
+
+app.use(logger());
+
+app.get("*", serveStatic({ root: "./dist" }));
 
 app.route("/", api);
 
@@ -20,10 +26,10 @@ app.get("/", (c) => {
 				<link rel="stylesheet" href="style.css" />
 				<title>FreeSleep</title>
 				{!import.meta.env || import.meta.env.PROD ? (
-          <script type='module' src='/client.js'></script>
-        ) : (
-          <script type='module' src='/src/client/app.tsx'></script>
-        )}
+					<script type="module" src="/client.js"></script>
+				) : (
+					<script type="module" src="/src/client/app.tsx"></script>
+				)}
 			</head>
 			<body>
 				<div id="root" />
@@ -31,5 +37,9 @@ app.get("/", (c) => {
 		</html>,
 	);
 });
+
+Deno.serve(app.fetch);
+
+Deno.cron("Control loop", "* * * * *", controlLoop);
 
 export default app;

@@ -11,13 +11,13 @@
     "zod": "npm:zod@^3.25.76"
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read=public,dist --unstable-kv --unstable-cron src/deno.ts",
+    "start": "deno run --allow-net --allow-read=public,dist --unstable-kv --unstable-cron src/index.tsx",
     "lint": "deno run -A npm:@biomejs/biome lint --write",
     "format": "deno run -A npm:@biomejs/biome format --write",
     "check": "deno run -A npm:@biomejs/biome check --write",
     "deploy": "deployctl deploy",
     "build": "deno run -A --node-modules-dir npm:vite build",
-    "dev": "deno run -A --node-modules-dir npm:vite"
+    "dev": "deno run -A --unstable-kv --unstable-cron --node-modules-dir npm:vite"
   },
   "compilerOptions": {
     "strict": true,
@@ -38,6 +38,6 @@
       "**/node_modules"
     ],
     "include": [],
-    "entrypoint": "src/deno.ts"
+    "entrypoint": "src/index.tsx"
   }
 }

@@ -3,9 +3,9 @@ import devServer from "@hono/vite-dev-server";
 import { defineConfig } from "vite";
 
 export default defineConfig({
-  server: {
-    port: 8000,
-  },
+	server: {
+		port: 8000,
+	},
 	cacheDir: "node_modules/.vite",
 	esbuild: {
 		jsx: "automatic",
