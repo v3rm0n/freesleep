@@ -1,27 +1,36 @@
 {
   "imports": {
-    "@biomejs/biome": "npm:@biomejs/biome@^2.0.6",
+    "hono": "npm:hono@^4.8.4",
+    "@biomejs/biome": "npm:@biomejs/biome@^2.1.1",
     "@deno/vite-plugin": "npm:@deno/vite-plugin@^1.0.5",
     "@hono/vite-build": "npm:@hono/vite-build@^1.6.2",
+    "@hono/vite-dev-server": "npm:@hono/vite-dev-server@^0.20.0",
     "@hono/zod-validator": "npm:@hono/zod-validator@^0.7.0",
     "@std/uuid": "jsr:@std/uuid@^1.0.9",
-    "hono": "npm:hono@^4.8.3",
-    "vite": "npm:vite@^7.0.2",
-    "zod": "npm:zod@^3.25.67"
+    "vite": "npm:vite@^7.0.3",
+    "zod": "npm:zod@^3.25.76"
   },
   "tasks": {
-    "start": "deno run --allow-net --allow-read=static --unstable src/main.tsx",
+    "start": "deno run --allow-net --allow-read=public,dist --unstable-kv --unstable-cron src/deno.ts",
     "lint": "deno run -A npm:@biomejs/biome lint --write",
     "format": "deno run -A npm:@biomejs/biome format --write",
     "check": "deno run -A npm:@biomejs/biome check --write",
     "deploy": "deployctl deploy",
-    "build": "deno run -A npm:vite build --mode client",
-    "dev": "deno run -A --unstable-kv --unstable-cron --watch src/main.tsx"
+    "build": "deno run -A --node-modules-dir npm:vite build",
+    "dev": "deno run -A --node-modules-dir npm:vite"
   },
   "compilerOptions": {
+    "strict": true,
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "deno.unstable"
+    ],
+    "types": [
+      "vite/client"
+    ],
     "jsx": "precompile",
-    "jsxImportSource": "hono/jsx",
-    "strict": true
+    "jsxImportSource": "hono/jsx"
   },
   "deploy": {
     "project": "5305b3f8-c630-442b-8f4d-c90be024a7f7",

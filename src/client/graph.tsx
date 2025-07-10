@@ -1,6 +1,4 @@
-import type { FC } from "hono/jsx";
-
-export const Graph: FC = () => {
+export const Graph = () => {
 	return (
 		<>
 			<canvas id="graph" resize></canvas>
