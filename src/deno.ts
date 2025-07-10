@@ -8,7 +8,7 @@ const app = new Hono();
 
 app.use(logger());
 
-app.get("*", serveStatic({ path: "./dist" }));
+app.get("*", serveStatic({ root: "./dist" }));
 
 app.route("/", index);
 
