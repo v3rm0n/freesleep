@@ -28,7 +28,7 @@ app.get("/", (c) => {
 				{!import.meta.env || import.meta.env.PROD ? (
 					<script type="module" src="/client.js"></script>
 				) : (
-					<script type="module" src="/src/client/app.tsx"></script>
+					<script type="module" src="/client/app.tsx"></script>
 				)}
 			</head>
 			<body>

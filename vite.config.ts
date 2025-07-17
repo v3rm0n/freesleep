@@ -13,14 +13,14 @@ export default defineConfig({
 	},
 	build: {
 		rollupOptions: {
-			input: "./src/client/app.tsx",
+			input: "./client/app.tsx",
 			output: { entryFileNames: "client.js" },
 		},
 	},
 	plugins: [
 		deno(),
 		devServer({
-			entry: "src/index.tsx",
+			entry: "server/index.tsx",
 		}),
 	],
 });

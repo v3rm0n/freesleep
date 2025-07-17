@@ -2,17 +2,14 @@
   "version": "5",
   "specifiers": {
     "jsr:@std/assert@*": "1.0.13",
-    "jsr:@std/bytes@^1.0.6": "1.0.6",
-    "jsr:@std/crypto@^1.0.5": "1.0.5",
     "jsr:@std/internal@^1.0.6": "1.0.8",
-    "jsr:@std/uuid@^1.0.9": "1.0.9",
     "npm:@biomejs/biome@*": "2.1.1",
     "npm:@biomejs/biome@^2.1.1": "2.1.1",
     "npm:@deno/vite-plugin@^1.0.5": "1.0.5_vite@7.0.3__picomatch@4.0.2",
-    "npm:@hono/vite-build@^1.6.2": "1.6.2_hono@4.8.4",
     "npm:@hono/vite-dev-server@0.20": "0.20.0_hono@4.8.4",
     "npm:@hono/zod-validator@0.7": "0.7.0_hono@4.8.4_zod@3.25.76",
     "npm:hono@^4.8.4": "4.8.4",
+    "npm:paper@~0.12.18": "0.12.18",
     "npm:vite@*": "7.0.3_picomatch@4.0.2",
     "npm:vite@^7.0.3": "7.0.3_picomatch@4.0.2",
     "npm:zod@^3.25.76": "3.25.76"
@@ -24,21 +21,8 @@
         "jsr:@std/internal"
       ]
     },
-    "@std/bytes@1.0.6": {
-      "integrity": "f6ac6adbd8ccd99314045f5703e23af0a68d7f7e58364b47d2c7f408aeb5820a"
-    },
-    "@std/crypto@1.0.5": {
-      "integrity": "0dcfbb319fe0bba1bd3af904ceb4f948cde1b92979ec1614528380ed308a3b40"
-    },
     "@std/internal@1.0.8": {
       "integrity": "fc66e846d8d38a47cffd274d80d2ca3f0de71040f855783724bb6b87f60891f5"
-    },
-    "@std/uuid@1.0.9": {
-      "integrity": "44b627bf2d372fe1bd099e2ad41b2be41a777fc94e62a3151006895a037f1642",
-      "dependencies": [
-        "jsr:@std/bytes",
-        "jsr:@std/crypto"
-      ]
     }
   },
   "npm": {
@@ -403,12 +387,6 @@
         "hono"
       ]
     },
-    "@hono/vite-build@1.6.2_hono@4.8.4": {
-      "integrity": "sha512-wM1KZelUcLiPABYSe/1YtveCkHJxaZ42e68naRznUPKrfVYPAC7wE8Itilmxa81ICZKhb1tBOQ7CHxtGF5dLGw==",
-      "dependencies": [
-        "hono"
-      ]
-    },
     "@hono/vite-dev-server@0.20.0_hono@4.8.4": {
       "integrity": "sha512-Qkp9jh4R0q5VnUTBIoaeyh0M6nZWMWPaj5sHa0JJIS3Wu0UPi+Trc5JQTv0tKfYkrnAwOSQXW17pI1815o/5lQ==",
       "dependencies": [
@@ -596,6 +574,9 @@
       "integrity": "sha512-N8SpfPUnUp1bK+PMYW8qSWdl9U+wwNWI4QKxOYDy9JAro3WMX7p2OeVRF9v+347pnakNevPmiHhNmZ2HbFA76w==",
       "bin": true
     },
+    "paper@0.12.18": {
+      "integrity": "sha512-ZSLIEejQTJZuYHhSSqAf4jXOnii0kPhCJGAnYAANtdS72aNwXJ9cP95tZHgq1tnNpvEwgQhggy+4OarviqTCGw=="
+    },
     "picocolors@1.1.1": {
       "integrity": "sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA=="
     },
@@ -671,13 +652,12 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/uuid@^1.0.9",
       "npm:@biomejs/biome@^2.1.1",
       "npm:@deno/vite-plugin@^1.0.5",
-      "npm:@hono/vite-build@^1.6.2",
       "npm:@hono/vite-dev-server@0.20",
       "npm:@hono/zod-validator@0.7",
       "npm:hono@^4.8.4",
+      "npm:paper@~0.12.18",
       "npm:vite@^7.0.3",
       "npm:zod@^3.25.76"
     ]
