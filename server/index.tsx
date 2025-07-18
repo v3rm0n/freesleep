@@ -9,6 +9,8 @@ const app = new Hono();
 
 app.use(logger());
 
+app.get("/client/*", serveStatic({ root: "./" }));
+
 app.get("*", serveStatic({ root: "./dist" }));
 
 app.route("/", api);
