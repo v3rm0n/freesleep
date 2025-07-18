@@ -38,6 +38,27 @@ app.get("/", (c) => {
 	);
 });
 
+app.get("/demo", (c) => {
+	return c.html(
+		<html lang="en">
+			<head>
+				<meta charSet="utf-8" />
+				<meta content="width=device-width, initial-scale=1" name="viewport" />
+				<link
+					href="https://fonts.cdnfonts.com/css/sf-pro-display"
+					rel="stylesheet"
+				/>
+				<link rel="stylesheet" href="style.css" />
+				<title>FreeSleep component demo</title>
+				<script type="module" src="/client/demo.tsx"></script>
+			</head>
+			<body>
+				<div id="root" />
+			</body>
+		</html>,
+	);
+});
+
 Deno.serve(app.fetch);
 
 Deno.cron("Control loop", "* * * * *", controlLoop);
