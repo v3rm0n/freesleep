@@ -1,6 +1,7 @@
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
+import { type Context, Hono, type MiddlewareHandler, type Next } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import {
 	Credentials,
 	getCredentials,
@@ -19,12 +20,26 @@ import {
 type Variables = { bearerToken: SessionId };
 const app = new Hono<{ Variables: Variables }>();
 
-const authenticated = bearerAuth({
-	verifyToken: async (token, c) => {
-		c.set("bearerToken", token);
-		return await hasCredentials(SessionId.parse(token));
-	},
-});
+const authenticated: MiddlewareHandler = async (
+	c: Context,
+	next: Next,
+	//biome-ignore lint/suspicious/noConfusingVoidType: This is necessary
+): Promise<Response | void> => {
+	const session = getCookie(c, "SESSION");
+	if (session) {
+		c.set("bearerToken", session);
+		if (await hasCredentials(SessionId.parse(session))) {
+			return next();
+		}
+		return new Response("Session cookie is not valid!");
+	}
+	return bearerAuth({
+		verifyToken: async (token, c) => {
+			c.set("bearerToken", token);
+			return await hasCredentials(SessionId.parse(token));
+		},
+	})(c, next);
+};
 
 const routes = app
 	.post("/login", zValidator("json", Credentials), async (c) => {
@@ -33,6 +48,11 @@ const routes = app
 		const token = await storeCredentials(data, id);
 		try {
 			await retrieveAccessToken(token, data);
+			setCookie(c, "SESSION", token, {
+				httpOnly: true,
+				secure: !import.meta.env || import.meta.env.PROD,
+				sameSite: "strict",
+			});
 			return c.json({
 				success: true,
 				token,
@@ -50,7 +70,12 @@ const routes = app
 		const bearerToken = c.get("bearerToken");
 		const credentials = await getCredentials(bearerToken);
 		await removeSession(credentials.username, bearerToken);
+		deleteCookie(c, "SESSION");
 		return c.json({ success: true });
+	})
+
+	.get("/auth/check", authenticated, async (c) => {
+		return c.json({ authenticated: true });
 	})
 
 	.get("/state/expected", authenticated, async (c) => {

@@ -30,3 +30,99 @@ p {
 	font-size: 1em;
 	text-align: center;
 }
+
+/* Login form styles */
+.login-container {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-height: 100vh;
+	padding: 20px;
+}
+
+.login-form {
+	background: rgba(40, 40, 40, 0.9);
+	padding: 40px;
+	border-radius: 12px;
+	border: 1px solid rgba(255, 255, 255, 0.1);
+	width: 100%;
+	max-width: 400px;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.login-form h1 {
+	margin-bottom: 8px;
+	font-size: 2.5em;
+	text-align: center;
+}
+
+.login-form p {
+	margin-bottom: 32px;
+	color: rgba(255, 255, 255, 0.7);
+	text-align: center;
+}
+
+.form-group {
+	margin-bottom: 24px;
+}
+
+.form-group input {
+	width: 100%;
+	padding: 16px;
+	background: rgba(60, 60, 60, 0.8);
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 8px;
+	color: white;
+	font-size: 16px;
+	font-family: "SF Pro Display", sans-serif;
+	transition: border-color 0.2s ease;
+	box-sizing: border-box;
+}
+
+.form-group input:focus {
+	outline: none;
+	border-color: rgba(255, 255, 255, 0.4);
+}
+
+.form-group input::placeholder {
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.form-group input:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.login-form button {
+	width: 100%;
+	padding: 16px;
+	background: rgba(255, 255, 255, 0.9);
+	color: black;
+	border: none;
+	border-radius: 8px;
+	font-size: 16px;
+	font-weight: 600;
+	font-family: "SF Pro Display", sans-serif;
+	cursor: pointer;
+	transition: background 0.2s ease;
+}
+
+.login-form button:hover:not(:disabled) {
+	background: white;
+}
+
+.login-form button:disabled {
+	opacity: 0.6;
+	cursor: not-allowed;
+}
+
+.error-message {
+	color: #ff6b6b;
+	text-align: center;
+	margin-bottom: 20px;
+	padding: 12px;
+	background: rgba(255, 107, 107, 0.1);
+	border: 1px solid rgba(255, 107, 107, 0.3);
+	border-radius: 6px;
+	font-size: 14px;
+}

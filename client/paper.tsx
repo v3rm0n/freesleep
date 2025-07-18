@@ -38,10 +38,6 @@ export const PaperProvider = ({ children }: PropsWithChildren) => {
 			};
 
 			setIsReady(true);
-
-			return () => {
-				paper?.remove();
-			};
 		}
 	}, []);
 
