@@ -9,7 +9,9 @@ const app = new Hono();
 
 app.use(logger());
 
-app.get("/client/*", serveStatic({ root: "./" }));
+app.get("/client/*", serveStatic({ root: "./",	mimes: {
+		tsx: "application/javascript",
+	} }));
 
 app.get("*", serveStatic({ root: "./dist" }));
 
