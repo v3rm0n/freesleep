@@ -54,7 +54,11 @@ app.get("/demo", (c) => {
 				/>
 				<link rel="stylesheet" href="style.css" />
 				<title>FreeSleep component demo</title>
-				<script type="module" src="/client/demo.tsx"></script>
+				{!import.meta.env || import.meta.env.PROD ? (
+					<script type="module" src="/demo.js"></script>
+				) : (
+					<script type="module" src="/client/demo.tsx"></script>
+				)}
 			</head>
 			<body>
 				<div id="root" />
