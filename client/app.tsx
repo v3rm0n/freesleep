@@ -1,7 +1,11 @@
 import { hc } from "hono/client";
 import { render, useEffect, useState } from "hono/jsx/dom";
 import type { AppType } from "../server/api.ts";
-import { maximumTemperature, minimumTemperature } from "../server/constants.ts";
+import {
+	heatingLevelToTemperatureMap,
+	maximumTemperature,
+	minimumTemperature,
+} from "../server/constants.ts";
 import { Graph, type Temperature, type Time } from "./graph.tsx";
 import { Login } from "./login.tsx";
 import PaperProvider from "./paper.tsx";
@@ -61,7 +65,47 @@ function App() {
 
 	// Helper function to convert heating level (-100 to 100) to temperature (13°C to 44°C)
 	const heatingLevelToTemperature = (level: number): number => {
-		return 13 + ((level + 100) / 200) * 31;
+		// Use the exact mapping table
+		const levelStr = level.toString();
+		if (levelStr in heatingLevelToTemperatureMap) {
+			return heatingLevelToTemperatureMap[
+				levelStr as keyof typeof heatingLevelToTemperatureMap
+			];
+		}
+
+		// For levels not in the table, find the closest mapping points and interpolate
+		const levels = Object.keys(heatingLevelToTemperatureMap)
+			.map(Number)
+			.sort((a, b) => a - b);
+
+		// Find the two closest levels
+		let lowerLevel = levels[0];
+		let upperLevel = levels[levels.length - 1];
+
+		for (let i = 0; i < levels.length - 1; i++) {
+			if (levels[i] <= level && levels[i + 1] >= level) {
+				lowerLevel = levels[i];
+				upperLevel = levels[i + 1];
+				break;
+			}
+		}
+
+		// Interpolate between the two closest points
+		const lowerTemp =
+			heatingLevelToTemperatureMap[
+				lowerLevel.toString() as keyof typeof heatingLevelToTemperatureMap
+			];
+		const upperTemp =
+			heatingLevelToTemperatureMap[
+				upperLevel.toString() as keyof typeof heatingLevelToTemperatureMap
+			];
+
+		if (lowerLevel === upperLevel) {
+			return lowerTemp;
+		}
+
+		const ratio = (level - lowerLevel) / (upperLevel - lowerLevel);
+		return lowerTemp + ratio * (upperTemp - lowerTemp);
 	};
 
 	// Helper function to convert temperature (13°C to 44°C) to heating level (-100 to 100)
@@ -71,7 +115,48 @@ function App() {
 			minimumTemperature,
 			Math.min(maximumTemperature, temp),
 		);
-		return Math.round(((clampedTemp - 13) / 31) * 200 - 100);
+
+		// Find exact match in the mapping table
+		for (const [levelStr, mappedTemp] of Object.entries(
+			heatingLevelToTemperatureMap,
+		)) {
+			if (mappedTemp === clampedTemp) {
+				return Number(levelStr);
+			}
+		}
+
+		// No exact match, find the closest temperature points and interpolate
+		const entries = Object.entries(heatingLevelToTemperatureMap)
+			.map(([level, temperature]) => ({ level: Number(level), temperature }))
+			.sort((a, b) => a.temperature - b.temperature);
+
+		// Find the two closest temperature points
+		let lowerEntry = entries[0];
+		let upperEntry = entries[entries.length - 1];
+
+		for (let i = 0; i < entries.length - 1; i++) {
+			if (
+				entries[i].temperature <= clampedTemp &&
+				entries[i + 1].temperature >= clampedTemp
+			) {
+				lowerEntry = entries[i];
+				upperEntry = entries[i + 1];
+				break;
+			}
+		}
+
+		// Interpolate between the two closest points
+		if (lowerEntry.temperature === upperEntry.temperature) {
+			return lowerEntry.level;
+		}
+
+		const ratio =
+			(clampedTemp - lowerEntry.temperature) /
+			(upperEntry.temperature - lowerEntry.temperature);
+		const interpolatedLevel =
+			lowerEntry.level + ratio * (upperEntry.level - lowerEntry.level);
+
+		return Math.round(interpolatedLevel);
 	};
 
 	// Helper function to convert time string to ISO datetime, handling midnight crossover
