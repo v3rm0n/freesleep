@@ -71,7 +71,7 @@ function App() {
 			minimumTemperature,
 			Math.min(maximumTemperature, temp),
 		);
-		return ((clampedTemp - 13) / 31) * 200 - 100;
+		return Math.round(((clampedTemp - 13) / 31) * 200 - 100);
 	};
 
 	// Helper function to convert time string to ISO datetime, handling midnight crossover
