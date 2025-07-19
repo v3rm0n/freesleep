@@ -1,6 +1,7 @@
 import { hc } from "hono/client";
 import { render, useEffect, useState } from "hono/jsx/dom";
 import type { AppType } from "../server/api.ts";
+import { maximumTemperature, minimumTemperature } from "../server/constants.ts";
 import { Graph, type Temperature, type Time } from "./graph.tsx";
 import { Login } from "./login.tsx";
 import PaperProvider from "./paper.tsx";
@@ -58,18 +59,19 @@ function App() {
 		}
 	};
 
-	// Helper function to convert heating level (0 to 100) to temperature (13°C to 30°C)
+	// Helper function to convert heating level (-100 to 100) to temperature (13°C to 44°C)
 	const heatingLevelToTemperature = (level: number): number => {
-		// Map 0 to 100 range to 13°C to 30°C range
-		return 13 + (level / 100) * 17;
+		return 13 + ((level + 100) / 200) * 31;
 	};
 
-	// Helper function to convert temperature (13°C to 30°C) to heating level (0 to 100)
+	// Helper function to convert temperature (13°C to 44°C) to heating level (-100 to 100)
 	const temperatureToHeatingLevel = (temp: number): number => {
 		// Clamp temperature to valid range first
-		const clampedTemp = Math.max(13, Math.min(30, temp));
-		// Map 13°C to 30°C range to 0 to 100 range
-		return ((clampedTemp - 13) / 17) * 100;
+		const clampedTemp = Math.max(
+			minimumTemperature,
+			Math.min(maximumTemperature, temp),
+		);
+		return ((clampedTemp - 13) / 31) * 200 - 100;
 	};
 
 	// Helper function to convert time string to ISO datetime, handling midnight crossover
