@@ -75,8 +75,12 @@ export const removeExpectedState = async (id: SessionId) => {
 
 export const copyExpectedState = async (oldId: SessionId, newId: SessionId) => {
 	const db = await Deno.openKv();
+	const {value: existingValue} = await db.get(["expectedState", oldId]);
+	if(!existingValue) {
+	  return;
+	}
 	await db.set(
 		["expectedState", newId],
-		await db.get(["expectedState", oldId]),
+		existingValue,
 	);
 };
