@@ -67,3 +67,16 @@ export const setExpectedState = async (id: SessionId, state: ExpectedState) => {
 	const db = await Deno.openKv();
 	await db.set(["expectedState", id], state);
 };
+
+export const removeExpectedState = async (id: SessionId) => {
+	const db = await Deno.openKv();
+	await db.delete(["expectedState", id]);
+};
+
+export const copyExpectedState = async (oldId: SessionId, newId: SessionId) => {
+	const db = await Deno.openKv();
+	await db.set(
+		["expectedState", newId],
+		await db.get(["expectedState", oldId]),
+	);
+};

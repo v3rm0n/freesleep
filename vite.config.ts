@@ -13,13 +13,13 @@ export default defineConfig({
 	},
 	build: {
 		rollupOptions: {
-		input: {
-						client: "./client/app.tsx",
-						demo: "./client/demo.tsx",
-					},
+			input: {
+				client: "./client/app.tsx",
+				demo: "./client/demo.tsx",
+			},
 			output: {
-							entryFileNames: "[name].js",
-						},
+				entryFileNames: "[name].js",
+			},
 		},
 	},
 	plugins: [

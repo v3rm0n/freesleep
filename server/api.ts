@@ -14,6 +14,7 @@ import {
 	ExpectedState,
 	getCurrentHeatingState,
 	getExpectedState,
+	removeExpectedState,
 	setExpectedState,
 } from "./state.ts";
 
@@ -70,6 +71,7 @@ const routes = app
 		const bearerToken = c.get("bearerToken");
 		const credentials = await getCredentials(bearerToken);
 		await removeSession(credentials.username, bearerToken);
+		await removeExpectedState(bearerToken);
 		deleteCookie(c, "SESSION");
 		return c.json({ success: true });
 	})

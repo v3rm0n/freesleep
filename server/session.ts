@@ -1,6 +1,7 @@
 import * as z from "zod/v4";
 import { type Credentials, removeCredentials } from "./credentials.ts";
 import { removeAccessToken } from "./eightsleep_api/access_token.ts";
+import { copyExpectedState, removeExpectedState } from "./state.ts";
 
 export const SessionId = z.uuid();
 
@@ -19,7 +20,9 @@ export const createSession = async (
 		console.log(
 			`Existing session found for ${credentials.username}, deleting...`,
 		);
+		await copyExpectedState(existingId, id);
 		await removeSession(credentials.username, existingId);
+		await removeExpectedState(existingId);
 	}
 	await db.set(["sessions", credentials.username], id);
 	return id;
