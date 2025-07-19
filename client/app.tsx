@@ -147,15 +147,11 @@ function App() {
 	}, [isAuthenticated]);
 
 	const handleTemperatureChange = async (data: [Time, Temperature][]) => {
-		console.log(data);
 		try {
 			const levels = data.map(([t, temp]) => {
 				return {
 					time: timeToISODateTime(t),
-					level: Math.max(
-						0,
-						Math.min(100, Math.round(temperatureToHeatingLevel(temp))),
-					),
+					level: temperatureToHeatingLevel(temp),
 				};
 			});
 
