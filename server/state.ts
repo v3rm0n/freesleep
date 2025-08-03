@@ -1,7 +1,11 @@
 import * as z from "zod/v4";
 import { resolveAccessToken } from "./eightsleep_api/access_token.ts";
 import * as http from "./eightsleep_api/http.ts";
-import { HeatingLevel } from "./eightsleep_api/model/index.ts";
+import {
+	HeatingLevel,
+	type Side,
+	UserId,
+} from "./eightsleep_api/model/index.ts";
 import type { SessionId } from "./session.ts";
 
 const HeatingState = z.object({
@@ -11,56 +15,103 @@ const HeatingState = z.object({
 
 export type HeatingState = z.infer<typeof HeatingState>;
 
-export const ExpectedState = z
-	.object({
-		levels: z.array(HeatingState),
-	})
-	.nullable();
+const CurrentStateSide = z.object({
+	userId: UserId,
+	isHeating: z.boolean(),
+	currentLevel: HeatingState,
+	targetLevel: HeatingState,
+});
+
+export const CurrentState = z.strictObject({
+	left: CurrentStateSide,
+	right: CurrentStateSide,
+});
+
+export type CurrentState = z.infer<typeof CurrentState>;
+
+export const ExpectedStateSide = z.object({
+	levels: z.array(HeatingState),
+});
+
+export type ExpectedStateSide = z.infer<typeof ExpectedStateSide>;
+
+export const ExpectedState = z.object({
+	left: ExpectedStateSide,
+	right: ExpectedStateSide,
+});
 
 export type ExpectedState = z.infer<typeof ExpectedState>;
 
-export const getCurrentHeatingState = async (
-	id: SessionId,
-): Promise<HeatingState> => {
+export const getCurrentState = async (id: SessionId): Promise<CurrentState> => {
 	const accessToken = await resolveAccessToken(id);
-	const temperature = await http.getTemperature(
+	const { id: deviceId } = await http.currentDevice(
 		accessToken.userId,
 		accessToken,
 	);
-	return HeatingState.parse({
-		level: temperature.currentLevel,
-		time: new Date().toISOString(),
-	});
+	const device = await http.device(deviceId, accessToken);
+	return {
+		left: {
+			userId: device.leftUserId,
+			isHeating: device.leftNowHeating,
+			currentLevel: {
+				level: device.leftHeatingLevel,
+				time: new Date().toISOString(),
+			},
+			targetLevel: {
+				level: device.leftTargetHeatingLevel,
+				time: new Date().toISOString(),
+			},
+		},
+		right: {
+			userId: device.rightUserId,
+			isHeating: device.rightNowHeating,
+			currentLevel: {
+				level: device.rightHeatingLevel,
+				time: new Date().toISOString(),
+			},
+			targetLevel: {
+				level: device.rightTargetHeatingLevel,
+				time: new Date().toISOString(),
+			},
+		},
+	};
 };
 
-export const setCurrentHeatingState = async (
+export const setCurrentHeatingLevel = async (
 	id: SessionId,
+	userId: UserId,
 	level: HeatingLevel,
 ): Promise<void> => {
 	const accessToken = await resolveAccessToken(id);
-	await http.setTemperature(level, accessToken);
-};
-
-export const getExpectedHeatingState = async (
-	id: SessionId,
-): Promise<HeatingState | null> => {
-	const db = await Deno.openKv();
-	const { value } = await db.get(["expectedState", id]);
-	const expectedState = ExpectedState.parse(value);
-	if (!expectedState) return null;
-	return (
-		expectedState.levels.findLast(
-			(level) => level.time <= new Date().toISOString(),
-		) || null
-	);
+	await http.setTemperature(userId, level, accessToken);
 };
 
 export const getExpectedState = async (
 	id: SessionId,
-): Promise<ExpectedState> => {
+): Promise<ExpectedState | null> => {
 	const db = await Deno.openKv();
 	const { value } = await db.get(["expectedState", id]);
+	if (!value) {
+		return null;
+	}
 	return ExpectedState.parse(value);
+};
+
+export const setSideExpectedState = async (
+	id: SessionId,
+	side: Side,
+	state: ExpectedStateSide,
+) => {
+	let expectedState = await getExpectedState(id);
+	if (!expectedState) {
+		expectedState = {
+			left: state,
+			right: state,
+		};
+	} else {
+		expectedState[side] = state;
+	}
+	setExpectedState(id, expectedState);
 };
 
 export const setExpectedState = async (id: SessionId, state: ExpectedState) => {

@@ -1,11 +1,13 @@
 import { hc } from "hono/client";
-import { render, useEffect, useState } from "hono/jsx/dom";
+import { render, useCallback, useEffect, useState } from "hono/jsx/dom";
 import type { AppType } from "../server/api.ts";
 import {
 	heatingLevelToTemperatureMap,
 	maximumTemperature,
 	minimumTemperature,
 } from "../server/constants.ts";
+import type { Side } from "../server/eightsleep_api/model/index.ts";
+import type { CurrentState, ExpectedState } from "../server/state.ts";
 import { Graph, type Temperature, type Time } from "./graph.tsx";
 import { Login } from "./login.tsx";
 import PaperProvider from "./paper.tsx";
@@ -22,22 +24,29 @@ function App() {
 		["08:00", 19.0],
 	];
 
-	const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+	const [currentState, setCurrentState] = useState<
+		CurrentState | null | undefined
+	>(undefined);
+	const [expectedState, setExpectedState] = useState<ExpectedState | null>(
+		null,
+	);
+	const [currentSide, setCurrentSide] = useState<Side>("left");
 	const [temperatureData, setTemperatureData] =
 		useState<[Time, Temperature][]>(initialState);
 
 	const checkAuthentication = async () => {
 		try {
-			const response = await client.auth.check.$get();
+			const response = await client.state.$get();
 			if (response.ok) {
 				const result = await response.json();
-				setIsAuthenticated(result.authenticated);
+				console.log(result);
+				setCurrentState(result);
 			} else {
-				setIsAuthenticated(false);
+				setCurrentState(null);
 			}
 		} catch (error) {
 			console.log("Authentication check failed:", error);
-			setIsAuthenticated(false);
+			setCurrentState(null);
 		}
 	};
 
@@ -46,21 +55,26 @@ function App() {
 	}, []);
 
 	const handleLoginSuccess = () => {
-		setIsAuthenticated(true);
+		checkAuthentication();
 	};
 
 	const handleLogout = async () => {
 		try {
 			const response = await client.logout.$post();
-			if (response.ok) {
-				setIsAuthenticated(false);
-				setTemperatureData(initialState);
-			} else {
+			if (!response.ok) {
 				console.error("Failed to logout");
 			}
 		} catch (error) {
 			console.error("Error during logout:", error);
+		} finally {
+			setCurrentState(null);
+			setTemperatureData(initialState);
+			setExpectedState(null);
 		}
+	};
+
+	const handleSideChange = (side: Side) => {
+		setCurrentSide(side);
 	};
 
 	// Helper function to convert heating level (-100 to 100) to temperature (13°C to 44°C)
@@ -204,13 +218,11 @@ function App() {
 			const response = await client.state.expected.$get();
 			if (response.ok) {
 				const result = await response.json();
-				if (result?.levels && result.levels.length > 0) {
-					// Convert API data to graph format with proper ordering
-					const graphData = convertApiToGraphData(result);
-					setTemperatureData(graphData as [Time, Temperature][]);
-				} else {
-					// Use default data if no expected state is set
+				if (!result) {
 					setTemperatureData(initialState);
+					return;
+				} else {
+					setExpectedState(result);
 				}
 			} else {
 				console.error("Failed to fetch expected state");
@@ -224,37 +236,52 @@ function App() {
 		}
 	};
 
-	// Load expected state when authenticated
 	useEffect(() => {
-		if (isAuthenticated) {
+		if (expectedState) {
+			const levels = expectedState[currentSide].levels;
+			if (levels && levels.length > 0) {
+				// Convert API data to graph format with proper ordering
+				const graphData = convertApiToGraphData(expectedState[currentSide]);
+				setTemperatureData(graphData as [Time, Temperature][]);
+			}
+		}
+	}, [expectedState, currentSide]);
+
+	// Load expected state when authenticated or side changes
+	useEffect(() => {
+		if (currentState) {
 			loadExpectedState();
 		}
-	}, [isAuthenticated]);
+	}, [currentState]);
 
-	const handleTemperatureChange = async (data: [Time, Temperature][]) => {
-		try {
-			const levels = data.map(([t, temp]) => {
-				return {
-					time: timeToISODateTime(t),
-					level: temperatureToHeatingLevel(temp),
-				};
-			});
+	const handleTemperatureChange = useCallback(
+		async (data: [Time, Temperature][]) => {
+			try {
+				const levels = data.map(([t, temp]) => {
+					return {
+						time: timeToISODateTime(t),
+						level: temperatureToHeatingLevel(temp),
+					};
+				});
 
-			// Submit to API
-			const response = await client.state.expected.$post({
-				json: { levels },
-			});
+				// Submit to API
+				const response = await client.state.expected[":side"].$post({
+					param: { side: currentSide },
+					json: { levels },
+				});
 
-			if (!response.ok) {
-				console.error("Failed to update expected state");
+				if (!response.ok) {
+					console.error("Failed to update expected state");
+				}
+			} catch (error) {
+				console.error("Error updating expected state:", error);
 			}
-		} catch (error) {
-			console.error("Error updating expected state:", error);
-		}
-	};
+		},
+		[currentSide],
+	);
 
 	// Show loading state while checking authentication
-	if (isAuthenticated === null) {
+	if (currentState === undefined) {
 		return (
 			<div
 				style={{
@@ -271,7 +298,7 @@ function App() {
 	}
 
 	// Show login page if not authenticated
-	if (!isAuthenticated) {
+	if (!currentState) {
 		return <Login onLoginSuccess={handleLoginSuccess} />;
 	}
 
@@ -286,6 +313,67 @@ function App() {
 						marginBottom: "20px",
 					}}
 				>
+					<div
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "10px",
+						}}
+					>
+						<span style={{ fontSize: "16px", fontWeight: "500" }}>Side:</span>
+						<div
+							style={{
+								display: "flex",
+								backgroundColor: "rgba(60, 60, 60, 0.8)",
+								border: "1px solid rgba(255, 255, 255, 0.2)",
+								borderRadius: "8px",
+								padding: "2px",
+							}}
+						>
+							<button
+								type="button"
+								onClick={() => handleSideChange("left")}
+								style={{
+									padding: "8px 16px",
+									backgroundColor:
+										currentSide === "left"
+											? "rgba(255, 255, 255, 0.9)"
+											: "transparent",
+									color: currentSide === "left" ? "black" : "white",
+									border: "none",
+									borderRadius: "6px",
+									cursor: "pointer",
+									fontSize: "14px",
+									fontWeight: "500",
+									fontFamily: "SF Pro Display, sans-serif",
+									transition: "all 0.2s ease",
+								}}
+							>
+								Left
+							</button>
+							<button
+								type="button"
+								onClick={() => handleSideChange("right")}
+								style={{
+									padding: "8px 16px",
+									backgroundColor:
+										currentSide === "right"
+											? "rgba(255, 255, 255, 0.9)"
+											: "transparent",
+									color: currentSide === "right" ? "black" : "white",
+									border: "none",
+									borderRadius: "6px",
+									cursor: "pointer",
+									fontSize: "14px",
+									fontWeight: "500",
+									fontFamily: "SF Pro Display, sans-serif",
+									transition: "all 0.2s ease",
+								}}
+							>
+								Right
+							</button>
+						</div>
+					</div>
 					<button
 						type="button"
 						onClick={handleLogout}
@@ -302,7 +390,11 @@ function App() {
 						Logout
 					</button>
 				</div>
-				<Graph data={temperatureData} onChange={handleTemperatureChange} />
+				<Graph
+					data={temperatureData}
+					onChange={handleTemperatureChange}
+					key={`${currentSide}-graph`}
+				/>
 			</div>
 		</PaperProvider>
 	);

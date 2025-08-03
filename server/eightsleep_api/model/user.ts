@@ -1,5 +1,9 @@
 import * as z from "zod/v4";
 
+export const Side = z.enum(["left", "right"]);
+
+export type Side = z.infer<typeof Side>;
+
 export const NotificationSettings = z.object({
 	weeklyReportEmail: z.boolean(),
 	sessionProcessed: z.boolean(),
@@ -22,7 +26,7 @@ export const SleepTracking = z.object({
 
 export const CurrentDevice = z.object({
 	id: z.string(),
-	side: z.enum(["left", "right"]),
+	side: Side,
 	timeZone: z.string(),
 	specialization: z.string(),
 });

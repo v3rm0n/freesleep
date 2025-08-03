@@ -1,5 +1,9 @@
 import * as z from "zod/v4";
 
+export const UserId = z.string();
+
+export type UserId = z.infer<typeof UserId>;
+
 export const Login = z.object({
 	client_id: z.string(),
 	client_secret: z.string(),
@@ -15,7 +19,7 @@ export const AccessToken = z.object({
 	token_type: z.string(),
 	expires_in: z.number(),
 	refresh_token: z.string(),
-	userId: z.string(),
+	userId: UserId,
 	expires_at: z.number(),
 });
 

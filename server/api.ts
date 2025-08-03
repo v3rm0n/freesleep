@@ -9,14 +9,21 @@ import {
 	storeCredentials,
 } from "./credentials.ts";
 import { retrieveAccessToken } from "./eightsleep_api/access_token.ts";
+import { Side } from "./eightsleep_api/model/index.ts";
 import { createSession, removeSession, SessionId } from "./session.ts";
 import {
-	ExpectedState,
-	getCurrentHeatingState,
+	ExpectedStateSide,
+	getCurrentState,
 	getExpectedState,
 	removeExpectedState,
-	setExpectedState,
+	setSideExpectedState,
 } from "./state.ts";
+
+declare global {
+	interface ImportMeta {
+		env: { PROD: boolean };
+	}
+}
 
 type Variables = { bearerToken: SessionId };
 const app = new Hono<{ Variables: Variables }>();
@@ -76,33 +83,36 @@ const routes = app
 		return c.json({ success: true });
 	})
 
-	.get("/auth/check", authenticated, async (c) => {
+	.get("/auth/check", authenticated, (c) => {
 		return c.json({ authenticated: true });
+	})
+
+	.get("/state", authenticated, async (c) => {
+		const bearerToken = c.get("bearerToken");
+		const state = await getCurrentState(bearerToken);
+		console.log(state);
+		return c.json(state);
 	})
 
 	.get("/state/expected", authenticated, async (c) => {
 		const bearerToken = c.get("bearerToken");
 		const state = await getExpectedState(bearerToken);
+		console.log(state);
 		return c.json(state);
 	})
 
 	.post(
-		"/state/expected",
+		"/state/expected/:side",
 		authenticated,
-		zValidator("json", ExpectedState),
+		zValidator("json", ExpectedStateSide),
 		async (c) => {
 			const bearerToken = c.get("bearerToken");
 			const data = c.req.valid("json");
-			await setExpectedState(bearerToken, data);
+			const side = c.req.param("side");
+			await setSideExpectedState(bearerToken, Side.parse(side), data);
 			return c.json({ success: true });
 		},
-	)
-
-	.get("/state/level/current", authenticated, async (c) => {
-		const bearerToken = c.get("bearerToken");
-		const state = await getCurrentHeatingState(bearerToken);
-		return c.json(state);
-	});
+	);
 
 export default app;
 

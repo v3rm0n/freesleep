@@ -1,4 +1,5 @@
 import * as z from "zod/v4";
+import { UserId } from "./index.ts";
 
 export const DaysUTC = z.object({
 	sunday: z.boolean(),
@@ -70,20 +71,20 @@ export const WifiInfo = z.object({
 });
 
 export const AwaySides = z.object({
-	leftUserId: z.string(),
-	rightUserId: z.string(),
+	leftUserId: UserId,
+	rightUserId: UserId,
 });
 
 export const Device = z.object({
 	deviceId: z.string(),
 	ownerId: z.string(),
-	leftUserId: z.string(),
+	leftUserId: UserId,
 	leftHeatingLevel: z.number(),
 	leftTargetHeatingLevel: z.number(),
 	leftNowHeating: z.boolean(),
 	leftHeatingDuration: z.number(),
 	leftSchedule: Schedule,
-	rightUserId: z.string(),
+	rightUserId: UserId,
 	rightHeatingLevel: z.number(),
 	rightTargetHeatingLevel: z.number(),
 	rightNowHeating: z.boolean(),

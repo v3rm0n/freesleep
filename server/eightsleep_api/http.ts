@@ -7,6 +7,7 @@ import {
 	type Login,
 	Temperature,
 	type User,
+	type UserId,
 	UserResponse,
 } from "./model/index.ts";
 
@@ -63,7 +64,7 @@ export const device = async (
 };
 
 export const getTemperature = async (
-	userId: string,
+	userId: UserId,
 	accessToken: AccessToken,
 ): Promise<Temperature> => {
 	console.log("Fetching temperature");
@@ -77,11 +78,12 @@ export const getTemperature = async (
 };
 
 export const setTemperature = async (
+	userId: UserId,
 	level: HeatingLevel,
 	accessToken: AccessToken,
 ): Promise<void> => {
 	console.log(`Setting temperature ${level}`);
-	await fetch(`${APP_API_URL}/users/${accessToken.userId}/temperature`, {
+	await fetch(`${APP_API_URL}/users/${userId}/temperature`, {
 		method: "PUT",
 		headers: {
 			"Content-Type": "application/json",
@@ -92,7 +94,7 @@ export const setTemperature = async (
 };
 
 export const currentDevice = async (
-	userId: string,
+	userId: UserId,
 	accessToken: AccessToken,
 ): Promise<CurrentDevice> => {
 	return CurrentDevice.parse(
