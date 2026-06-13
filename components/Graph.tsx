@@ -13,6 +13,9 @@ interface GraphProps {
 export const Graph = ({ data, onChange }: GraphProps) => {
 	const { paper } = usePaper();
 	const graphRef = useRef<paper.Path | null>(null);
+	const lineRef = useRef<paper.Path | null>(null);
+	const nodeItemsRef = useRef<paper.Path[]>([]);
+	const nodesGroupRef = useRef<paper.Group | null>(null);
 	const xAxisRef = useRef<paper.Path | null>(null);
 	const referenceLinesRef = useRef<paper.Group | null>(null);
 	const allElementsRef = useRef<paper.Group | null>(null);
@@ -117,15 +120,18 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 			return;
 		}
 
-		// Create gradient
-		const gradientStops: paper.GradientStop[] = [];
+		// Build two matching horizontal gradients from the per-point temperature:
+		// a soft translucent one for the area fill and a crisp opaque one for the
+		// top line. Warm hues sit where the curve is high, cool hues where it dips.
+		const fillStops: paper.GradientStop[] = [];
+		const lineStops: paper.GradientStop[] = [];
 		const xStart = curveSegments[0].point.x;
 		const xEnd = curveSegments[curveSegments.length - 1].point.x;
-		const xRange = xEnd - xStart;
+		const xRange = xEnd - xStart || 1;
 
-		const hot = new paper.Color(1.0, 1.0, 0.0);
-		const cold = new paper.Color(0.0, 0.4, 1.0);
-		const neutral = new paper.Color(0.9, 0.1, 0.0);
+		const hot = new paper.Color(1.0, 0.45, 0.22); // coral – warmest
+		const neutral = new paper.Color(0.62, 0.36, 0.95); // violet – mid
+		const cold = new paper.Color(0.2, 0.55, 1.0); // azure – coolest
 
 		curveSegments.forEach((segment) => {
 			const point = segment.point;
@@ -148,20 +154,43 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 				b = neutral.blue + (cold.blue - neutral.blue) * f;
 			}
 
-			gradientStops.push(
-				new paper.GradientStop(
-					new paper.Color(r, g, b),
-					(point.x - xStart) / xRange,
-				),
+			const offset = (point.x - xStart) / xRange;
+			fillStops.push(
+				new paper.GradientStop(new paper.Color(r, g, b, 0.45), offset),
+			);
+			lineStops.push(
+				new paper.GradientStop(new paper.Color(r, g, b, 1), offset),
 			);
 		});
 
-		const gradient = new paper.Gradient();
-		gradient.stops = gradientStops;
-		graph.fillColor = new paper.Color(gradient, [xStart, 0], [xEnd, 0]);
+		const fillGradient = new paper.Gradient();
+		fillGradient.stops = fillStops;
+		graph.fillColor = new paper.Color(fillGradient, [xStart, 0], [xEnd, 0]);
 
-		xAxis.bringToFront();
+		const line = lineRef.current;
+		if (line && lineStops.length > 1) {
+			const lineGradient = new paper.Gradient();
+			lineGradient.stops = lineStops;
+			line.strokeColor = new paper.Color(lineGradient, [xStart, 0], [xEnd, 0]);
+		}
+
 		referenceLines.sendToBack();
+		xAxis.bringToFront();
+
+		// Glue the crisp top line and the node handles to the (smoothed) curve.
+		if (line) {
+			for (let i = 0; i < line.segments.length; i++) {
+				const src = graph.segments[i];
+				line.segments[i].point = src.point.clone();
+				line.segments[i].handleIn = src.handleIn.clone();
+				line.segments[i].handleOut = src.handleOut.clone();
+			}
+			line.bringToFront();
+		}
+		for (let i = 0; i < nodeItemsRef.current.length; i++) {
+			nodeItemsRef.current[i].position = graph.segments[i].point.clone();
+		}
+		nodesGroupRef.current?.bringToFront();
 
 		curveSegments.forEach((segment) => {
 			if (!scaleRef.current) return;
@@ -212,13 +241,46 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 			curveSegmentsRef.current.length,
 		);
 
+		// Crisp top line drawn over the translucent fill. It's an open path with no
+		// baseline; refreshGraph keeps its points/handles synced to the curve.
+		const line = new paper.Path({
+			segments: data.map(([, temperature], i) => [
+				xPositions[i],
+				temperatureToY(temperature),
+			]),
+			strokeWidth: 3,
+			strokeCap: "round",
+			strokeJoin: "round",
+		});
+		line.shadowColor = new paper.Color(1, 1, 1, 0.25);
+		line.shadowBlur = 8;
+		lineRef.current = line;
+
+		// Visible draggable handles so it's obvious the curve can be dragged.
+		const nodeItems = data.map(([, temperature], i) => {
+			const node = new paper.Path.Circle({
+				center: [xPositions[i], temperatureToY(temperature)],
+				radius: 5,
+			});
+			node.fillColor = new paper.Color(1, 1, 1, 0.95);
+			node.strokeColor = new paper.Color(0, 0, 0, 0.35);
+			node.strokeWidth = 1.5;
+			node.shadowColor = new paper.Color(1, 1, 1, 0.45);
+			node.shadowBlur = 6;
+			return node;
+		});
+		nodeItemsRef.current = nodeItems;
+		const nodesGroup = new paper.Group(nodeItems);
+		nodesGroupRef.current = nodesGroup;
+
 		// Create x-axis
 		const xAxis = new paper.Path({
 			segments: [
 				[xPositions[0], 275],
 				[xPositions[xPositions.length - 1], 275],
 			],
-			strokeColor: "grey",
+			strokeColor: new paper.Color(1, 1, 1, 0.18),
+			strokeWidth: 1,
 		});
 		xAxisRef.current = xAxis;
 
@@ -229,24 +291,27 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 					[x, 20],
 					[x, 278],
 				],
-				strokeColor: "grey",
+				strokeColor: new paper.Color(1, 1, 1, 0.08),
+				strokeWidth: 1,
 				strokeJoin: "round",
 				strokeCap: "round",
-				dashArray: [10, 6],
+				dashArray: [2, 6],
 			});
 
+			// Per-point temperature readout (content is set in refreshGraph).
 			const referenceText = new paper.PointText({
-				point: [x, 10],
+				point: [x, 12],
 				content: x.toString(),
-				fillColor: "grey",
-				fontSize: 10,
+				fillColor: new paper.Color(1, 1, 1, 0.92),
+				fontSize: 11,
+				fontWeight: "600",
 				justification: "center",
 			});
 
 			const referenceTime = new paper.PointText({
-				point: [x, 290],
+				point: [x, 292],
 				content: time,
-				fillColor: "grey",
+				fillColor: new paper.Color(1, 1, 1, 0.45),
 				fontSize: 10,
 				justification: "center",
 			});
@@ -263,35 +328,38 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 		referenceLinesRef.current = referenceLines;
 
 		// Create temperature labels
+		const axisLabelColor = new paper.Color(1, 1, 1, 0.4);
 		const maxTemp = new paper.PointText({
 			point: [20, 30],
 			content: "30",
 			justification: "right",
-			fillColor: "grey",
+			fillColor: axisLabelColor,
 		});
 
 		const midTemp = new paper.PointText({
 			point: [20, (275 + 30) / 2],
 			content: "22",
 			justification: "right",
-			fillColor: "grey",
+			fillColor: axisLabelColor,
 		});
 
 		const minTemp = new paper.PointText({
 			point: [20, 275],
 			content: "13",
 			justification: "right",
-			fillColor: "grey",
+			fillColor: axisLabelColor,
 		});
 
 		const temperatures = new paper.Group([maxTemp, midTemp, minTemp]);
 
-		// Group all elements
+		// Group all elements (back-to-front; refreshGraph re-asserts z-order)
 		const allElements = new paper.Group([
+			referenceLines,
 			graph,
+			line,
 			xAxis,
 			temperatures,
-			referenceLines,
+			nodesGroup,
 		]);
 		allElementsRef.current = allElements;
 
@@ -319,10 +387,25 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 			dragStateRef.current.isDragging = true;
 		};
 
+		// Visually emphasise whichever handle is being dragged.
+		const setActiveNode = (activeIndex: number) => {
+			nodeItemsRef.current.forEach((node, i) => {
+				node.shadowBlur = i === activeIndex ? 16 : 6;
+				node.shadowColor = new paper.Color(
+					1,
+					1,
+					1,
+					i === activeIndex ? 0.85 : 0.45,
+				);
+			});
+		};
+
 		const onMouseDrag = (event: paper.MouseEvent) => {
 			const segment = closestCurveSegment(event.point);
 
 			if (!scaleRef.current) return;
+
+			setActiveNode(curveSegmentsRef.current.indexOf(segment));
 
 			// Convert to temperature first to apply proper bounds
 			const rawY = Math.max(
@@ -378,6 +461,7 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 			// Reset drag state
 			dragStateRef.current.isDragging = false;
 			dragStateRef.current.changedPoints.clear();
+			setActiveNode(-1);
 		};
 
 		const onResize = (event: { size: paper.Size }) => {
