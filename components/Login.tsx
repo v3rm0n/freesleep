@@ -1,8 +1,5 @@
-import { hc } from "hono/client";
-import { useState } from "hono/jsx/dom";
-import type { AppType } from "../server/api.ts";
-
-const client = hc<AppType>("/");
+import { useState } from "preact/hooks";
+import { api } from "./client.ts";
 
 interface LoginProps {
 	onLoginSuccess: () => void;
@@ -26,12 +23,7 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
 		setError("");
 
 		try {
-			const response = await client.login.$post({
-				json: {
-					username,
-					password,
-				},
-			});
+			const response = await api.login({ username, password });
 
 			const result = await response.json();
 
@@ -60,9 +52,7 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
 							type="text"
 							placeholder="Username"
 							value={username}
-							onChange={(e) =>
-								setUsername((e.target as HTMLInputElement).value)
-							}
+							onInput={(e) => setUsername((e.target as HTMLInputElement).value)}
 							disabled={isLoading}
 							required
 						/>
@@ -73,9 +63,7 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
 							type="password"
 							placeholder="Password"
 							value={password}
-							onChange={(e) =>
-								setPassword((e.target as HTMLInputElement).value)
-							}
+							onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
 							disabled={isLoading}
 							required
 						/>

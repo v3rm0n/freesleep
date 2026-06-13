@@ -1,8 +1,8 @@
 [
 	{
-		"label": "deno: run",
+		"label": "fresh: dev",
 		"command": "deno",
-		"args": ["run", "main.ts"],
+		"args": ["task", "dev"],
 		"group": "build",
 		"presentation": {
 			"echo": true,
@@ -13,9 +13,22 @@
 		"problemMatcher": []
 	},
 	{
-		"label": "deno: dev (watch)",
+		"label": "fresh: build",
 		"command": "deno",
-		"args": ["run", "--watch", "main.ts"],
+		"args": ["task", "build"],
+		"group": "build",
+		"presentation": {
+			"echo": true,
+			"reveal": "always",
+			"focus": false,
+			"panel": "shared"
+		},
+		"problemMatcher": []
+	},
+	{
+		"label": "fresh: start",
+		"command": "deno",
+		"args": ["task", "start"],
 		"group": "build",
 		"presentation": {
 			"echo": true,
@@ -28,7 +41,7 @@
 	{
 		"label": "deno: test",
 		"command": "deno",
-		"args": ["test"],
+		"args": ["test", "-A"],
 		"group": "test",
 		"presentation": {
 			"echo": true,
@@ -41,7 +54,7 @@
 	{
 		"label": "deno: test (watch)",
 		"command": "deno",
-		"args": ["test", "--watch"],
+		"args": ["test", "-A", "--watch"],
 		"group": "test",
 		"presentation": {
 			"echo": true,
@@ -52,9 +65,9 @@
 		"problemMatcher": []
 	},
 	{
-		"label": "deno: fmt",
+		"label": "biome: check",
 		"command": "deno",
-		"args": ["fmt"],
+		"args": ["task", "check"],
 		"group": "build",
 		"presentation": {
 			"echo": true,
@@ -65,22 +78,9 @@
 		"problemMatcher": []
 	},
 	{
-		"label": "deno: lint",
+		"label": "deno: type-check",
 		"command": "deno",
-		"args": ["lint"],
-		"group": "build",
-		"presentation": {
-			"echo": true,
-			"reveal": "always",
-			"focus": false,
-			"panel": "shared"
-		},
-		"problemMatcher": []
-	},
-	{
-		"label": "deno: check",
-		"command": "deno",
-		"args": ["check", "main.ts"],
+		"args": ["check"],
 		"group": "build",
 		"presentation": {
 			"echo": true,

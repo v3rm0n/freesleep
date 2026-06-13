@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "hono/jsx/dom";
-import { usePaper } from "./paper.tsx";
+import type * as paper from "paper";
+import { useEffect, useRef } from "preact/hooks";
+import { usePaper } from "./Paper.tsx";
 
 export type Time = string;
 export type Temperature = number;
@@ -106,7 +107,9 @@ export const Graph = ({ data, onChange }: GraphProps) => {
 			if (i > 0 && i < curveSegments.length - 1) {
 				graph.segments[i].smooth({ type: "catmull-rom" });
 			} else {
-				graph.segments[i].smooth = false;
+				// paper.js types only expose `smooth` as a method; the original
+				// clears smoothing on endpoints by overwriting it. Preserve that.
+				(graph.segments[i] as unknown as { smooth: boolean }).smooth = false;
 			}
 		}
 
