@@ -1,16 +1,57 @@
-html,
-body {
-	height: 100%;
-	margin: 0;
-	background-color: #000;
-	background-image: radial-gradient(
+:root {
+	--bg: #05070b;
+	--bg-gradient: radial-gradient(
 		120% 120% at 50% -20%,
 		#161922 0%,
 		#05070b 55%,
 		#000 100%
 	);
+	--fg: #ffffff;
+	--muted: rgba(255, 255, 255, 0.6);
+	--surface: rgba(60, 60, 60, 0.8);
+	--surface-raised: rgba(40, 40, 40, 0.9);
+	--border: rgba(255, 255, 255, 0.2);
+	--border-strong: rgba(255, 255, 255, 0.4);
+	--border-subtle: rgba(255, 255, 255, 0.1);
+	--accent: rgba(255, 255, 255, 0.92);
+	--accent-strong: #ffffff;
+	--accent-fg: #000000;
+	--danger: #dc3545;
+	--placeholder: rgba(255, 255, 255, 0.5);
+	color-scheme: dark;
+}
+
+[data-theme="light"] {
+	--bg: #eef1f6;
+	--bg-gradient: radial-gradient(
+		120% 120% at 50% -20%,
+		#ffffff 0%,
+		#eef1f6 55%,
+		#dde3ec 100%
+	);
+	--fg: #11151f;
+	--muted: rgba(17, 21, 31, 0.6);
+	--surface: rgba(255, 255, 255, 0.85);
+	--surface-raised: rgba(255, 255, 255, 0.95);
+	--border: rgba(17, 21, 31, 0.16);
+	--border-strong: rgba(17, 21, 31, 0.35);
+	--border-subtle: rgba(17, 21, 31, 0.08);
+	--accent: #1b2230;
+	--accent-strong: #11151f;
+	--accent-fg: #ffffff;
+	--danger: #d23b4b;
+	--placeholder: rgba(17, 21, 31, 0.45);
+	color-scheme: light;
+}
+
+html,
+body {
+	height: 100%;
+	margin: 0;
+	background-color: var(--bg);
+	background-image: var(--bg-gradient);
 	background-attachment: fixed;
-	color: white;
+	color: var(--fg);
 	font-family: "SF Pro Display", sans-serif;
 }
 
@@ -55,10 +96,10 @@ p {
 }
 
 .login-form {
-	background: rgba(40, 40, 40, 0.9);
+	background: var(--surface-raised);
 	padding: 40px;
 	border-radius: 12px;
-	border: 1px solid rgba(255, 255, 255, 0.1);
+	border: 1px solid var(--border-subtle);
 	width: 100%;
 	max-width: 400px;
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
@@ -72,7 +113,7 @@ p {
 
 .login-form p {
 	margin-bottom: 32px;
-	color: rgba(255, 255, 255, 0.7);
+	color: var(--muted);
 	text-align: center;
 }
 
@@ -83,10 +124,10 @@ p {
 .form-group input {
 	width: 100%;
 	padding: 16px;
-	background: rgba(60, 60, 60, 0.8);
-	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: var(--surface);
+	border: 1px solid var(--border);
 	border-radius: 8px;
-	color: white;
+	color: var(--fg);
 	font-size: 16px;
 	font-family: "SF Pro Display", sans-serif;
 	transition: border-color 0.2s ease;
@@ -95,11 +136,11 @@ p {
 
 .form-group input:focus {
 	outline: none;
-	border-color: rgba(255, 255, 255, 0.4);
+	border-color: var(--border-strong);
 }
 
 .form-group input::placeholder {
-	color: rgba(255, 255, 255, 0.5);
+	color: var(--placeholder);
 }
 
 .form-group input:disabled {
@@ -110,8 +151,8 @@ p {
 .login-form button {
 	width: 100%;
 	padding: 16px;
-	background: rgba(255, 255, 255, 0.9);
-	color: black;
+	background: var(--accent);
+	color: var(--accent-fg);
 	border: none;
 	border-radius: 8px;
 	font-size: 16px;
@@ -122,7 +163,7 @@ p {
 }
 
 .login-form button:hover:not(:disabled) {
-	background: white;
+	background: var(--accent-strong);
 }
 
 .login-form button:disabled {

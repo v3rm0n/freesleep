@@ -1,3 +1,4 @@
+import { useEffect, useState } from "preact/hooks";
 import { Graph, type Temperature, type Time } from "../components/Graph.tsx";
 import PaperProvider from "../components/Paper.tsx";
 
@@ -11,9 +12,25 @@ const initialState: [Time, Temperature][] = [
 ];
 
 export default function Demo() {
+	const [data, setData] = useState<[Time, Temperature][]>(initialState);
+	const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+	// Match whatever theme the no-flash script in _app.tsx resolved.
+	useEffect(() => {
+		setTheme(
+			(document.documentElement.dataset.theme as "dark" | "light") ?? "dark",
+		);
+	}, []);
+
 	return (
 		<PaperProvider>
-			<Graph data={initialState} />
+			<Graph
+				data={data}
+				onChange={setData}
+				now={{ time: "02:40", temperature: 15.4 }}
+				theme={theme}
+				key={`demo-${data.length}`}
+			/>
 		</PaperProvider>
 	);
 }
