@@ -1,6 +1,8 @@
-import { hc } from "hono/client";
-import { render, useCallback, useEffect, useState } from "hono/jsx/dom";
-import type { AppType } from "../server/api.ts";
+import { useCallback, useEffect, useState } from "preact/hooks";
+import { api } from "../components/client.ts";
+import { Graph, type Temperature, type Time } from "../components/Graph.tsx";
+import { Login } from "../components/Login.tsx";
+import PaperProvider from "../components/Paper.tsx";
 import {
 	heatingLevelToTemperatureMap,
 	maximumTemperature,
@@ -8,13 +10,8 @@ import {
 } from "../server/constants.ts";
 import type { Side } from "../server/eightsleep_api/model/index.ts";
 import type { CurrentState, ExpectedState } from "../server/state.ts";
-import { Graph, type Temperature, type Time } from "./graph.tsx";
-import { Login } from "./login.tsx";
-import PaperProvider from "./paper.tsx";
 
-const client = hc<AppType>("/");
-
-function App() {
+export default function App() {
 	const initialState: [Time, Temperature][] = [
 		["22:00", 18.5],
 		["00:00", 16.2],
@@ -36,9 +33,9 @@ function App() {
 
 	const checkAuthentication = async () => {
 		try {
-			const response = await client.state.$get();
+			const response = await api.getState();
 			if (response.ok) {
-				const result = await response.json();
+				const result = (await response.json()) as CurrentState;
 				console.log(result);
 				setCurrentState(result);
 			} else {
@@ -60,7 +57,7 @@ function App() {
 
 	const handleLogout = async () => {
 		try {
-			const response = await client.logout.$post();
+			const response = await api.logout();
 			if (!response.ok) {
 				console.error("Failed to logout");
 			}
@@ -215,9 +212,9 @@ function App() {
 
 	const loadExpectedState = async () => {
 		try {
-			const response = await client.state.expected.$get();
+			const response = await api.getExpectedState();
 			if (response.ok) {
-				const result = await response.json();
+				const result = (await response.json()) as ExpectedState | null;
 				if (!result) {
 					setTemperatureData(initialState);
 					return;
@@ -265,10 +262,7 @@ function App() {
 				});
 
 				// Submit to API
-				const response = await client.state.expected[":side"].$post({
-					param: { side: currentSide },
-					json: { levels },
-				});
+				const response = await api.setExpectedState(currentSide, { levels });
 
 				if (!response.ok) {
 					console.error("Failed to update expected state");
@@ -398,10 +392,4 @@ function App() {
 			</div>
 		</PaperProvider>
 	);
-}
-
-const root = document.getElementById("root");
-
-if (root) {
-	render(<App />, root);
 }
