@@ -1,7 +1,15 @@
 html,
 body {
 	height: 100%;
-	background-color: black;
+	margin: 0;
+	background-color: #000;
+	background-image: radial-gradient(
+		120% 120% at 50% -20%,
+		#161922 0%,
+		#05070b 55%,
+		#000 100%
+	);
+	background-attachment: fixed;
 	color: white;
 	font-family: "SF Pro Display", sans-serif;
 }
@@ -15,6 +23,12 @@ canvas[resize] {
 	max-height: 100vh;
 	display: block;
 	margin: 0 auto;
+	cursor: grab;
+	touch-action: none;
+}
+
+canvas[resize]:active {
+	cursor: grabbing;
 }
 
 h1 {
