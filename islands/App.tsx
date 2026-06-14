@@ -30,6 +30,27 @@ export default function App() {
 	const [currentSide, setCurrentSide] = useState<Side>("left");
 	const [temperatureData, setTemperatureData] =
 		useState<[Time, Temperature][]>(initialState);
+	const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+	// Adopt the theme the no-flash script in _app.tsx already resolved.
+	useEffect(() => {
+		const resolved =
+			(document.documentElement.dataset.theme as "dark" | "light") ?? "dark";
+		setTheme(resolved);
+	}, []);
+
+	const toggleTheme = () => {
+		setTheme((prev) => {
+			const next = prev === "dark" ? "light" : "dark";
+			document.documentElement.dataset.theme = next;
+			try {
+				localStorage.setItem("freesleep-theme", next);
+			} catch {
+				// ignore storage being unavailable
+			}
+			return next;
+		});
+	};
 
 	const checkAuthentication = async () => {
 		try {
@@ -253,6 +274,8 @@ export default function App() {
 
 	const handleTemperatureChange = useCallback(
 		async (data: [Time, Temperature][]) => {
+			// Controlled: adopt the new curve immediately, then persist it.
+			setTemperatureData(data);
 			try {
 				const levels = data.map(([t, temp]) => {
 					return {
@@ -296,6 +319,20 @@ export default function App() {
 		return <Login onLoginSuccess={handleLoginSuccess} />;
 	}
 
+	const nowDate = new Date();
+	const nowMarker = {
+		time: `${nowDate.getHours().toString().padStart(2, "0")}:${nowDate
+			.getMinutes()
+			.toString()
+			.padStart(2, "0")}`,
+		temperature:
+			Math.round(
+				heatingLevelToTemperature(
+					currentState[currentSide].currentLevel.level,
+				) * 10,
+			) / 10,
+	};
+
 	return (
 		<PaperProvider>
 			<div style={{ padding: "20px" }}>
@@ -304,90 +341,101 @@ export default function App() {
 						display: "flex",
 						justifyContent: "space-between",
 						alignItems: "center",
-						marginBottom: "20px",
+						marginBottom: "12px",
+						gap: "10px",
+						flexWrap: "wrap",
 					}}
 				>
-					<div
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "10px",
-						}}
-					>
+					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
 						<span style={{ fontSize: "16px", fontWeight: "500" }}>Side:</span>
 						<div
 							style={{
 								display: "flex",
-								backgroundColor: "rgba(60, 60, 60, 0.8)",
-								border: "1px solid rgba(255, 255, 255, 0.2)",
+								backgroundColor: "var(--surface)",
+								border: "1px solid var(--border)",
 								borderRadius: "8px",
 								padding: "2px",
 							}}
 						>
-							<button
-								type="button"
-								onClick={() => handleSideChange("left")}
-								style={{
-									padding: "8px 16px",
-									backgroundColor:
-										currentSide === "left"
-											? "rgba(255, 255, 255, 0.9)"
-											: "transparent",
-									color: currentSide === "left" ? "black" : "white",
-									border: "none",
-									borderRadius: "6px",
-									cursor: "pointer",
-									fontSize: "14px",
-									fontWeight: "500",
-									fontFamily: "SF Pro Display, sans-serif",
-									transition: "all 0.2s ease",
-								}}
-							>
-								Left
-							</button>
-							<button
-								type="button"
-								onClick={() => handleSideChange("right")}
-								style={{
-									padding: "8px 16px",
-									backgroundColor:
-										currentSide === "right"
-											? "rgba(255, 255, 255, 0.9)"
-											: "transparent",
-									color: currentSide === "right" ? "black" : "white",
-									border: "none",
-									borderRadius: "6px",
-									cursor: "pointer",
-									fontSize: "14px",
-									fontWeight: "500",
-									fontFamily: "SF Pro Display, sans-serif",
-									transition: "all 0.2s ease",
-								}}
-							>
-								Right
-							</button>
+							{(["left", "right"] as const).map((side) => (
+								<button
+									key={side}
+									type="button"
+									onClick={() => handleSideChange(side)}
+									style={{
+										padding: "8px 16px",
+										backgroundColor:
+											currentSide === side ? "var(--accent)" : "transparent",
+										color:
+											currentSide === side ? "var(--accent-fg)" : "var(--fg)",
+										border: "none",
+										borderRadius: "6px",
+										cursor: "pointer",
+										fontSize: "14px",
+										fontWeight: "500",
+										fontFamily: "SF Pro Display, sans-serif",
+										transition: "all 0.2s ease",
+										textTransform: "capitalize",
+									}}
+								>
+									{side}
+								</button>
+							))}
 						</div>
 					</div>
-					<button
-						type="button"
-						onClick={handleLogout}
-						style={{
-							padding: "10px 20px",
-							backgroundColor: "#dc3545",
-							color: "white",
-							border: "none",
-							borderRadius: "5px",
-							cursor: "pointer",
-							fontSize: "14px",
-						}}
-					>
-						Logout
-					</button>
+					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+						<button
+							type="button"
+							onClick={toggleTheme}
+							aria-label="Toggle light or dark theme"
+							title="Toggle light / dark"
+							style={{
+								width: "40px",
+								height: "40px",
+								backgroundColor: "var(--surface)",
+								color: "var(--fg)",
+								border: "1px solid var(--border)",
+								borderRadius: "8px",
+								cursor: "pointer",
+								fontSize: "16px",
+							}}
+						>
+							{theme === "dark" ? "☀️" : "🌙"}
+						</button>
+						<button
+							type="button"
+							onClick={handleLogout}
+							style={{
+								padding: "10px 20px",
+								backgroundColor: "var(--danger)",
+								color: "#fff",
+								border: "none",
+								borderRadius: "8px",
+								cursor: "pointer",
+								fontSize: "14px",
+							}}
+						>
+							Logout
+						</button>
+					</div>
 				</div>
+				<p
+					style={{
+						margin: "0 0 8px",
+						textAlign: "left",
+						fontSize: "13px",
+						color: "var(--muted)",
+					}}
+				>
+					Drag a point to set its temperature · double-click to add or remove a
+					point
+				</p>
 				<Graph
 					data={temperatureData}
 					onChange={handleTemperatureChange}
-					key={`${currentSide}-graph`}
+					now={nowMarker}
+					theme={theme}
+					key={`${currentSide}-${temperatureData.length}-graph`}
 				/>
 			</div>
 		</PaperProvider>
