@@ -1,0 +1,81 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- App background: dark radial like the FreeSleep UI -->
+    <radialGradient id="bg" cx="42%" cy="34%" r="85%">
+      <stop offset="0%" stop-color="#1b2030"/>
+      <stop offset="55%" stop-color="#0a0d14"/>
+      <stop offset="100%" stop-color="#03050a"/>
+    </radialGradient>
+
+    <!-- Warm (coral) -> cool (azure) gradient, the app's signature curve tint -->
+    <linearGradient id="curve" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff7338"/>
+      <stop offset="45%" stop-color="#ff9a5a"/>
+      <stop offset="70%" stop-color="#7aa9ff"/>
+      <stop offset="100%" stop-color="#338cff"/>
+    </linearGradient>
+
+    <!-- Translucent area fill under the curve -->
+    <linearGradient id="fill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#ff7338" stop-opacity="0.42"/>
+      <stop offset="45%" stop-color="#ff9a5a" stop-opacity="0.30"/>
+      <stop offset="70%" stop-color="#7aa9ff" stop-opacity="0.26"/>
+      <stop offset="100%" stop-color="#338cff" stop-opacity="0.34"/>
+    </linearGradient>
+
+    <linearGradient id="moon" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#cdd6e6" stop-opacity="0.85"/>
+    </linearGradient>
+
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Squircle mask so the artwork stays inside the rounded tile -->
+    <clipPath id="tile">
+      <rect x="0" y="0" width="512" height="512" rx="112" ry="112"/>
+    </clipPath>
+
+    <!-- Crescent: a moon disc with an offset disc carved out -->
+    <mask id="crescent">
+      <circle cx="374" cy="130" r="50" fill="#ffffff"/>
+      <circle cx="396" cy="112" r="44" fill="#000000"/>
+    </mask>
+  </defs>
+
+  <g clip-path="url(#tile)">
+    <rect x="0" y="0" width="512" height="512" fill="url(#bg)"/>
+
+    <!-- Crescent moon: night / sleep -->
+    <g filter="url(#glow)">
+      <circle cx="374" cy="130" r="50" fill="url(#moon)" mask="url(#crescent)"/>
+    </g>
+
+    <!-- Translucent fill under the temperature curve -->
+    <path d="M 56 300
+             C 110 300 132 196 196 196
+             C 250 196 256 246 308 268
+             C 360 290 392 372 456 372
+             L 456 430 L 56 430 Z"
+          fill="url(#fill)"/>
+
+    <!-- The signature temperature curve -->
+    <path d="M 56 300
+             C 110 300 132 196 196 196
+             C 250 196 256 246 308 268
+             C 360 290 392 372 456 372"
+          fill="none" stroke="url(#curve)" stroke-width="18"
+          stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+    <!-- Draggable handles along the curve -->
+    <circle cx="196" cy="196" r="15" fill="#ffffff"/>
+    <circle cx="196" cy="196" r="15" fill="none" stroke="#ff8a4d" stroke-width="3"/>
+    <circle cx="308" cy="268" r="15" fill="#ffffff"/>
+    <circle cx="308" cy="268" r="15" fill="none" stroke="#7aa9ff" stroke-width="3"/>
+  </g>
+</svg>

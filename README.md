@@ -149,6 +149,19 @@ with a token that has `read:packages`.)
 Then open the web UI, sign in with your Eight Sleep account, and draw your
 schedule — the control loop keeps running inside the container.
 
+### Container icon
+
+When running the Docker image (e.g. in Unraid), point the container's **Icon**
+field at:
+
+```
+https://raw.githubusercontent.com/v3rm0n/freesleep/main/static/icon.png
+```
+
+The same image is also served by the app at `/icon.png` and used as the favicon
+and social (Open Graph) card. The source SVG lives at
+[`etc/icon.svg`](etc/icon.svg).
+
 ## Disclaimer
 
 Not affiliated with, endorsed by, or supported by Eight Sleep. It uses the
