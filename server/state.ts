@@ -6,6 +6,7 @@ import {
 	type Side,
 	UserId,
 } from "./eightsleep_api/model/index.ts";
+import { openKv } from "./kv.ts";
 import type { SessionId } from "./session.ts";
 
 const HeatingState = z.object({
@@ -89,7 +90,7 @@ export const setCurrentHeatingLevel = async (
 export const getExpectedState = async (
 	id: SessionId,
 ): Promise<ExpectedState | null> => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	const { value } = await db.get(["expectedState", id]);
 	if (!value) {
 		return null;
@@ -115,17 +116,17 @@ export const setSideExpectedState = async (
 };
 
 export const setExpectedState = async (id: SessionId, state: ExpectedState) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	await db.set(["expectedState", id], state);
 };
 
 export const removeExpectedState = async (id: SessionId) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	await db.delete(["expectedState", id]);
 };
 
 export const copyExpectedState = async (oldId: SessionId, newId: SessionId) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	const { value: existingValue } = await db.get(["expectedState", oldId]);
 	if (!existingValue) {
 		return;
