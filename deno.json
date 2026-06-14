@@ -6,8 +6,7 @@
 		"start": "deno serve -A --unstable-kv --unstable-cron _fresh/server.js",
 		"lint": "deno run -A npm:@biomejs/biome lint --write",
 		"format": "deno run -A npm:@biomejs/biome format --write",
-		"check": "deno run -A npm:@biomejs/biome check --write",
-		"deploy": "deployctl deploy"
+		"check": "deno run -A npm:@biomejs/biome check --write"
 	},
 	"imports": {
 		"fresh": "jsr:@fresh/core@^2.3.3",
@@ -50,11 +49,5 @@
 			"template"
 		],
 		"types": ["vite/client"]
-	},
-	"deploy": {
-		"project": "5305b3f8-c630-442b-8f4d-c90be024a7f7",
-		"exclude": ["**/node_modules"],
-		"include": [],
-		"entrypoint": "_fresh/server.js"
 	}
 }

@@ -9,7 +9,8 @@ schedule you draw yourself, and nudges the pod to follow it minute by minute.
 
 ![FreeSleep UI](/etc/screenshot.png)
 
-Try the interactive graph (no account needed): **<https://freesleep.deno.dev/demo>**
+The graph has a sign-in-free demo at the `/demo` route — run it locally (see
+[Running locally](#running-locally)) to try it.
 
 ## Features
 
@@ -23,7 +24,8 @@ Try the interactive graph (no account needed): **<https://freesleep.deno.dev/dem
 - 🌗 **Light & dark themes** — follows your system preference, with a manual toggle.
 - ⏱️ **Set-and-forget** — a server-side job reconciles the pod every minute, so the
   schedule keeps running whether or not the page is open.
-- 🆓 **No subscription** — runs on your own (free) Deno Deploy project.
+- 🆓 **No subscription** — self-host it for free on hardware you already own (a
+  ready-to-run Docker image is published).
 
 ## The UI
 
@@ -45,9 +47,9 @@ The same component, in light mode:
 ## How it works
 
 1. You sign in with your Eight Sleep credentials. The session and your drawn
-   schedule are stored in [Deno KV](https://deno.com/kv).
+   schedule are stored in Deno KV (a local SQLite database when self-hosted).
 2. The graph saves your schedule as a list of `{ time, level }` points per side.
-3. A [`Deno.cron`](https://docs.deno.com/deploy/kv/manual/cron/) job (`server/control_loop.ts`)
+3. A `Deno.cron` job (`server/control_loop.ts`)
    runs **every minute**. For each logged-in user and each side it:
    - reads the pod's current target heating level from the Eight Sleep API,
    - looks up the temperature your schedule expects *right now*, and
@@ -58,11 +60,11 @@ levels (−100…100) via the table in `server/constants.ts`.
 
 ## Tech stack
 
-- [Deno](https://deno.com) + [Fresh 2](https://fresh.deno.dev) (Preact islands)
+- [Deno](https://deno.com) + [Fresh 2](https://github.com/denoland/fresh) (Preact islands)
 - [paper.js](http://paperjs.org/) for the canvas graph
 - [Vite](https://vite.dev) build, [Zod](https://zod.dev) for validation,
   [Biome](https://biomejs.dev) for lint/format
-- [Deno KV](https://deno.com/kv) for storage and `Deno.cron` for the control loop
+- Deno KV (SQLite-backed) for storage and `Deno.cron` for the control loop
 
 ## Running locally
 
@@ -78,7 +80,7 @@ deno task dev
 
 Open <http://localhost:8000/demo> to play with the graph without signing in.
 
-To run the full app the way it runs in production (Deno KV + the every-minute
+To run the full app the way the Docker image does (Deno KV + the every-minute
 control loop), build first and serve the output:
 
 ```sh
@@ -94,7 +96,6 @@ Other tasks:
 | `deno task build` | Production build into `_fresh/` |
 | `deno task start` | Serve the build with `--unstable-kv --unstable-cron` |
 | `deno task check` | Biome lint + format (writes fixes) |
-| `deno task deploy` | Manual `deployctl` deploy (fallback) |
 
 ## Project structure
 
@@ -119,16 +120,34 @@ server/
 main.ts              app entrypoint + Deno.cron registration
 ```
 
-## Deployment
+## Self-hosting
 
-FreeSleep runs on [Deno Deploy](https://deno.com/deploy). Pushes to `main` deploy
-to production and pull requests get their own preview deployment automatically.
+FreeSleep is meant to be self-hosted on any always-on machine — a home server,
+NAS, Raspberry Pi, or an Unraid box. It only makes **outbound** calls to the
+Eight Sleep API, so it never needs to be exposed to the internet.
 
-Two things must exist in the Deno Deploy project:
+The [`Publish Docker image`](.github/workflows/docker-publish.yml) workflow builds
+and pushes `ghcr.io/v3rm0n/freesleep` on every push to `main`. Run it with:
 
-- a **Deno KV** database, provisioned and assigned to the app (otherwise
-  `Deno.openKv()` is unavailable), and
-- the **cron** job, which Deno Deploy detects from `main.ts` automatically.
+```sh
+docker run -d \
+  --name freesleep \
+  -p 8000:8000 \
+  -v freesleep-data:/data \
+  ghcr.io/v3rm0n/freesleep:latest
+```
+
+- **Port `8000`** serves the web UI.
+- The **`/data` volume** holds the Deno KV SQLite database — `DENO_KV_PATH` is
+  preset to `/data/kv.sqlite3`, so your sessions and schedule survive restarts.
+
+On **Unraid**, add a container with repository `ghcr.io/v3rm0n/freesleep:latest`,
+map a host port to container `8000`, and map a share to `/data`. (GHCR packages
+are private by default — either make the package public, or add a registry login
+with a token that has `read:packages`.)
+
+Then open the web UI, sign in with your Eight Sleep account, and draw your
+schedule — the control loop keeps running inside the container.
 
 ## Disclaimer
 
