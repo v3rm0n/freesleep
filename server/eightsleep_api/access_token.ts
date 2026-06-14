@@ -1,4 +1,5 @@
 import { type Credentials, getCredentials } from "../credentials.ts";
+import { openKv } from "../kv.ts";
 import type { SessionId } from "../session.ts";
 import * as http from "./http.ts";
 import type { AccessToken } from "./model/index.ts";
@@ -8,18 +9,18 @@ const CLIENT_SECRET =
 	"f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76";
 
 const storeAccessToken = async (id: SessionId, accessToken: AccessToken) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	await db.set(["accessToken", id], accessToken);
 };
 
 const getAccessToken = async (id: SessionId) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	const { value } = await db.get<AccessToken>(["accessToken", id]);
 	return value;
 };
 
 export const removeAccessToken = async (id: SessionId) => {
-	const db = await Deno.openKv();
+	const db = await openKv();
 	await db.delete(["accessToken", id]);
 };
 

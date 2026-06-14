@@ -1,0 +1,16 @@
+# Build artifacts and deps are regenerated inside the image
+_fresh/
+node_modules/
+vendor/
+
+# VCS / tooling / local stuff not needed for the build
+.git/
+.github/
+.claude/
+.zed/
+.vscode/
+.DS_Store
+
+# Docs and screenshots aren't needed to build the app
+etc/
+*.md
