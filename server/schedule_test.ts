@@ -63,3 +63,20 @@ Deno.test("handles a curve saved after midnight", () => {
 Deno.test("returns null for an empty schedule", () => {
 	assertEquals(activeHeatingState([], new Date()), null);
 });
+
+Deno.test("follows a night that runs through the day", () => {
+	// A day sleeper's 09:00–17:00. The UI anchors every point to the same day
+	// (see components/night.ts), so the schedule starts at its earliest point.
+	const day = [
+		{ time: "2026-09-06T09:00:00.000Z", level: -75 },
+		{ time: "2026-09-06T13:00:00.000Z", level: -94 },
+		{ time: "2026-09-06T17:00:00.000Z", level: -67 },
+	];
+	const at = (iso: string) =>
+		activeHeatingState(day, new Date(iso))?.level ?? null;
+	assertEquals(at("2026-09-06T08:59:00Z"), null);
+	assertEquals(at("2026-09-06T10:00:00Z"), -75);
+	assertEquals(at("2026-09-07T14:00:00Z"), -94);
+	assertEquals(at("2026-09-07T17:00:00Z"), -67);
+	assertEquals(at("2026-09-07T22:00:00Z"), null);
+});

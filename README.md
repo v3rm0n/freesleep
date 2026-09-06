@@ -18,6 +18,9 @@ needed — run it locally (see [Running locally](#running-locally)) to try it.
   the night by dragging an interactive graph.
 - 🎚️ **Start from a preset** — load a Cold, Cool or Neutral night curve with one
   click, then fine-tune it by dragging.
+- 🕙 **Your own bedtime and wake-up** — set when the night starts and ends; the
+  curve stretches to fit, and presets load into your night. Day sleepers
+  welcome.
 - ➕ **Add / remove points** — double-click an empty gap to add a schedule point,
   or double-click a handle to remove it.
 - 🔴 **Live "now" marker** — see where you are in the night and the pod's current
@@ -39,6 +42,7 @@ night; the fill is tinted warm where the curve is high and cool where it dips.
 | Change a temperature | Drag a handle up or down (snaps to 0.5 °C) |
 | Add a schedule point | Double-click an empty gap on the curve |
 | Remove a point | Double-click its handle |
+| Change bedtime or wake-up | Pick a time in **Bedtime** / **Wake up** under the graph; the curve stretches to fit |
 | Load a preset | Click **Cold**, **Cool** or **Neutral** under the graph |
 | Switch side | **Left / Right** toggle above the graph |
 | Switch theme | Sun / moon button (top right) |
@@ -56,8 +60,9 @@ The same component, in light mode:
 3. A `Deno.cron` job (`server/control_loop.ts`)
    runs **every minute**. For each logged-in user and each side it:
    - looks up the temperature your schedule expects *right now*
-     (`server/schedule.ts`) — the curve repeats every night, and outside the
-     window between its first and last point the pod is left alone,
+     (`server/schedule.ts`) — the curve repeats every day, and outside the
+     night between its first point (bedtime) and its last (wake-up) the pod is
+     left alone,
    - reads the pod's current target heating level from the Eight Sleep API, and
    - writes the new heating level back to the pod if they differ. A pod that is
      switched off is not turned on.
@@ -118,6 +123,7 @@ components/
   Shell.tsx          top bar, theme toggle, full-page notices
   SchedulePanel.tsx  side toggle, live pod reading and the graph panel
   Graph.tsx          the paper.js temperature graph
+  night.ts           the night axis: bedtime, wake-up, stretching a curve to fit
   presets.ts         built-in night curves; the default for an undrawn side
   Paper.tsx          lazy paper.js setup (browser-only)
   Login.tsx          sign-in form

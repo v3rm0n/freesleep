@@ -1,13 +1,17 @@
 import type * as paper from "paper";
 import { useEffect, useRef } from "preact/hooks";
 import { minimumTemperature } from "../server/constants.ts";
+import { minutesAfter, minutesOfDay, minutesToTime } from "./night.ts";
 import { usePaper } from "./Paper.tsx";
 import type { Theme } from "./theme.ts";
 
 export type Time = string;
 export type Temperature = number;
 
-/** A side's schedule: a wall-clock time and a temperature per point. */
+/**
+ * A side's schedule: a wall-clock time and a temperature per point, in order
+ * from bedtime to wake-up (see night.ts for the axis they lie on).
+ */
 export type Schedule = [Time, Temperature][];
 
 export interface NowMarker {
@@ -24,31 +28,6 @@ interface GraphProps {
 	/** What the schedule belongs to (e.g. "Left side"), for assistive technology. */
 	label?: string;
 }
-
-// Sleep schedules run from the evening across midnight into the morning. Times
-// before this hour belong to the morning of the following day.
-export const NIGHT_CROSSOVER_HOUR = 12;
-
-const MINUTES_PER_DAY = 24 * 60;
-
-const pad2 = (n: number) => n.toString().padStart(2, "0");
-
-/** Formats a wall-clock time as "HH:MM". */
-export const formatTime = (date: Date): Time =>
-	`${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-
-// Map a "HH:MM" to minutes on the continuous night axis so before-noon times
-// sort after late-evening ones.
-export const nightMinutes = (time: Time): number => {
-	const [h, m] = time.split(":").map(Number);
-	const mins = h * 60 + m;
-	return h < NIGHT_CROSSOVER_HOUR ? mins + MINUTES_PER_DAY : mins;
-};
-const minutesToTime = (mins: number): Time => {
-	const wrapped =
-		((Math.round(mins) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
-	return `${pad2(Math.floor(wrapped / 60))}:${pad2(wrapped % 60)}`;
-};
 
 export const MIN_POINTS = 2;
 export const MAX_POINTS = 12;
@@ -220,15 +199,15 @@ export const Graph = ({
 
 	// Position of a wall-clock time on the (unscaled) x-axis, interpolated within
 	// whichever pair of schedule points brackets it. Returns null when the time
-	// falls outside the scheduled window.
+	// falls outside the night.
 	const timeToFractionalX = (time: Time): number | null => {
 		const current = dataRef.current;
 		if (current.length < 2) return null;
 		const positions = getXPositions(current.length);
-		const minutes = current.map(([t]) => nightMinutes(t));
-		const target = nightMinutes(time);
-		if (target < minutes[0] || target > minutes[minutes.length - 1])
-			return null;
+		const bedtime = current[0][0];
+		const minutes = current.map(([t]) => minutesAfter(bedtime, t));
+		const target = minutesAfter(bedtime, time);
+		if (target > minutes[minutes.length - 1]) return null;
 		for (let i = 0; i < minutes.length - 1; i++) {
 			if (target >= minutes[i] && target <= minutes[i + 1]) {
 				const span = minutes[i + 1] - minutes[i];
@@ -580,8 +559,12 @@ export const Graph = ({
 					break;
 				}
 			}
+			const bedtime = current[0][0];
 			const time = minutesToTime(
-				(nightMinutes(current[gap][0]) + nightMinutes(current[gap + 1][0])) / 2,
+				minutesOfDay(bedtime) +
+					(minutesAfter(bedtime, current[gap][0]) +
+						minutesAfter(bedtime, current[gap + 1][0])) /
+						2,
 			);
 			const temperature = snapTemperature(clampTemperature(yToTemperature(uy)));
 			skipTweenRef.current = true;

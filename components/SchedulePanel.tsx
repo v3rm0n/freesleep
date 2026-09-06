@@ -1,4 +1,5 @@
-import type { ComponentChildren } from "preact";
+import type { ComponentChildren, JSX } from "preact";
+import { useEffect, useState } from "preact/hooks";
 import type { Side } from "../server/eightsleep_api/model/index.ts";
 import {
 	formatTemperature,
@@ -7,8 +8,21 @@ import {
 	type Schedule,
 	type Temperature,
 } from "./Graph.tsx";
+import {
+	formatNightLength,
+	MIN_NIGHT_MINUTES,
+	minutesAfter,
+	NIGHT_STEP_MINUTES,
+	nightOf,
+} from "./night.ts";
 import PaperProvider from "./Paper.tsx";
-import { matchingPreset, PRESETS, temperatureRange } from "./presets.ts";
+import {
+	changeNight,
+	loadPreset,
+	matchingPreset,
+	PRESETS,
+	temperatureRange,
+} from "./presets.ts";
 import type { Theme } from "./theme.ts";
 
 export const SIDES: readonly Side[] = ["left", "right"];
@@ -73,8 +87,9 @@ interface PresetsProps {
 }
 
 /**
- * One-click starting curves. The preset the schedule still matches shows as
- * pressed; dragging a handle afterwards releases it.
+ * One-click starting curves, loaded into the side's own bedtime and wake-up.
+ * The preset the schedule still matches shows as pressed; dragging a handle
+ * afterwards releases it.
  */
 const Presets = ({ data, onChange }: PresetsProps) => {
 	const active = matchingPreset(data);
@@ -93,7 +108,7 @@ const Presets = ({ data, onChange }: PresetsProps) => {
 						class="preset"
 						aria-pressed={active?.id === preset.id}
 						title={preset.description}
-						onClick={() => onChange(preset.schedule)}
+						onClick={() => onChange(loadPreset(preset, data))}
 					>
 						<span class="preset-name">{preset.name}</span>{" "}
 						<span class="preset-range">
@@ -102,6 +117,87 @@ const Presets = ({ data, onChange }: PresetsProps) => {
 					</button>
 				);
 			})}
+		</fieldset>
+	);
+};
+
+interface NightRangeProps {
+	data: Schedule;
+	onChange: (data: Schedule) => void;
+}
+
+const TIME_PATTERN = /^\d{2}:\d{2}$/;
+
+/**
+ * Bedtime and wake-up — the schedule's first and last point — with the length
+ * of the night between them. Moving either end stretches the curve to fit.
+ */
+const NightRange = ({ data, onChange }: NightRangeProps) => {
+	const night = data.length >= 2 ? nightOf(data) : null;
+	// Why the last change was refused; shown in place of the night's length.
+	const [refusal, setRefusal] = useState<string | null>(null);
+	// A refusal is about one attempt; drop it once the schedule moves on.
+	useEffect(() => setRefusal(null), [data]);
+	if (!night) {
+		return null;
+	}
+
+	const changeEdge =
+		(edge: "start" | "end") => (event: JSX.TargetedEvent<HTMLInputElement>) => {
+			const input = event.currentTarget;
+			// Cleared, or a browser without a time field sending free text.
+			if (!TIME_PATTERN.test(input.value)) {
+				input.value = night[edge];
+				return;
+			}
+			const start = edge === "start" ? input.value : night.start;
+			const end = edge === "end" ? input.value : night.end;
+			if (start === night.start && end === night.end) {
+				return;
+			}
+			if (minutesAfter(start, end) < MIN_NIGHT_MINUTES) {
+				// The input is controlled, but its prop has not changed, so put the
+				// old time back by hand.
+				input.value = night[edge];
+				setRefusal(
+					`Keep at least ${formatNightLength(MIN_NIGHT_MINUTES)} between bedtime and wake-up.`,
+				);
+				return;
+			}
+			setRefusal(null);
+			onChange(changeNight(data, start, end));
+		};
+
+	return (
+		<fieldset class="night">
+			<legend class="visually-hidden">Sleep time</legend>
+			<label class="night-edge">
+				<span>Bedtime</span>
+				<input
+					type="time"
+					value={night.start}
+					step={NIGHT_STEP_MINUTES * 60}
+					onChange={changeEdge("start")}
+				/>
+			</label>
+			{refusal ? (
+				<span class="night-length night-length--refused" role="alert">
+					{refusal}
+				</span>
+			) : (
+				<span class="night-length" title="Length of the night">
+					{formatNightLength(night.minutes)}
+				</span>
+			)}
+			<label class="night-edge night-edge--wake">
+				<span>Wake up</span>
+				<input
+					type="time"
+					value={night.end}
+					step={NIGHT_STEP_MINUTES * 60}
+					onChange={changeEdge("end")}
+				/>
+			</label>
 		</fieldset>
 	);
 };
@@ -117,7 +213,7 @@ interface SchedulePanelProps {
 	status?: ComponentChildren;
 }
 
-/** The graph with its toolbar and usage hint. */
+/** The graph with its toolbar, bedtime and wake-up, presets and usage hint. */
 export const SchedulePanel = ({
 	side,
 	onSideChange,
@@ -142,6 +238,7 @@ export const SchedulePanel = ({
 				key={`${side}-${data.length}-graph`}
 			/>
 		</PaperProvider>
+		<NightRange key={side} data={data} onChange={onChange} />
 		<Presets data={data} onChange={onChange} />
 		<p class="hint">
 			Drag a handle to change its temperature.{" "}
