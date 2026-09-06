@@ -1,4 +1,5 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <title>FreeSleep</title>
   <defs>
     <!-- App background: dark radial like the FreeSleep UI -->
     <radialGradient id="bg" cx="42%" cy="34%" r="85%">

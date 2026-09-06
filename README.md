@@ -51,9 +51,12 @@ The same component, in light mode:
 2. The graph saves your schedule as a list of `{ time, level }` points per side.
 3. A `Deno.cron` job (`server/control_loop.ts`)
    runs **every minute**. For each logged-in user and each side it:
-   - reads the pod's current target heating level from the Eight Sleep API,
-   - looks up the temperature your schedule expects *right now*, and
-   - writes the new heating level back to the pod if they differ.
+   - looks up the temperature your schedule expects *right now*
+     (`server/schedule.ts`) — the curve repeats every night, and outside the
+     window between its first and last point the pod is left alone,
+   - reads the pod's current target heating level from the Eight Sleep API, and
+   - writes the new heating level back to the pod if they differ. A pod that is
+     switched off is not turned on.
 
 Temperatures (13–30 °C in the UI) are mapped to Eight Sleep's internal heating
 levels (−100…100) via the table in `server/constants.ts`.

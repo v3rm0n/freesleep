@@ -24,3 +24,8 @@ export const AccessToken = z.object({
 });
 
 export type AccessToken = z.infer<typeof AccessToken>;
+
+/** Body of a successful `/v1/tokens` response; `expires_at` is derived locally. */
+export const TokenResponse = AccessToken.omit({ expires_at: true });
+
+export type TokenResponse = z.infer<typeof TokenResponse>;

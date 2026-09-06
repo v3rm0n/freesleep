@@ -9,32 +9,23 @@ export const Credentials = z.object({
 
 export type Credentials = z.infer<typeof Credentials>;
 
-export const storeCredentials = async (
-	credentials: Credentials,
+export const credentialsKey = (id: SessionId): Deno.KvKey => [
+	"credentials",
+	id,
+];
+
+export const getCredentials = async (
 	id: SessionId,
-): Promise<SessionId> => {
+): Promise<Credentials | null> => {
 	const db = await openKv();
-	await db.set(["credentials", id], credentials);
-	return id;
+	const { value } = await db.get(credentialsKey(id));
+	return value === null ? null : Credentials.parse(value);
 };
 
-export const hasCredentials = async (id: SessionId) => {
-	const db = await openKv();
-	const { value } = await db.get<Credentials>(["credentials", id]);
-	return value !== null;
-};
+export const hasCredentials = async (id: SessionId): Promise<boolean> =>
+	(await getCredentials(id)) !== null;
 
-export const getCredentials = async (id: SessionId) => {
-	const db = await openKv();
-	const { value } = await db.get<Credentials>(["credentials", id]);
-	return Credentials.parse(value);
-};
-
-export const removeCredentials = async (id: SessionId) => {
-	const db = await openKv();
-	await db.delete(["credentials", id]);
-};
-
+/** Every stored credential; the session id is the last part of each key. */
 export const allCredentials = async () => {
 	const db = await openKv();
 	return db.list<Credentials>({ prefix: ["credentials"] });

@@ -39,7 +39,9 @@ export const PaperProvider = ({
 		// build (paper-core.js) is what we want in the client bundle.
 		(async () => {
 			const mod = await import("paper/dist/paper-core.js");
-			const paperScope = mod.default;
+			// paper-core.d.ts only pulls in the global `paper` namespace, so the
+			// module's default export is untyped; at runtime it is the PaperScope.
+			const paperScope = mod.default as unknown as paper.PaperScope;
 			if (!active || !canvasRef.current) {
 				return;
 			}
