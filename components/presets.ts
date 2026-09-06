@@ -1,5 +1,6 @@
 import { temperatureToHeatingLevel } from "../server/temperature.ts";
-import type { Schedule, Temperature } from "./Graph.tsx";
+import type { Schedule, Temperature, Time } from "./Graph.tsx";
+import { fitToNight, nightOf } from "./night.ts";
 
 /** A built-in night curve that can be loaded into a side with one click. */
 export interface Preset {
@@ -91,6 +92,44 @@ const sameSchedule = (a: Schedule, b: Schedule): boolean =>
 				temperatureToHeatingLevel(b[i][1]),
 	);
 
-/** The preset `schedule` still is, or null once it has been edited. */
-export const matchingPreset = (schedule: Schedule): Preset | null =>
-	PRESETS.find((preset) => sameSchedule(preset.schedule, schedule)) ?? null;
+/**
+ * The preset `schedule` still is, or null once it has been edited. Presets are
+ * compared as they would be loaded into the schedule's own night, so changing
+ * bedtime or wake-up does not release the preset.
+ */
+export const matchingPreset = (schedule: Schedule): Preset | null => {
+	if (schedule.length < 2) {
+		return null;
+	}
+	const { start, end } = nightOf(schedule);
+	return (
+		PRESETS.find((preset) =>
+			sameSchedule(fitToNight(preset.schedule, start, end), schedule),
+		) ?? null
+	);
+};
+
+/**
+ * A preset's curve fitted to the night `into` already spans, so loading a
+ * preset changes the temperatures but keeps the side's bedtime and wake-up.
+ */
+export const loadPreset = (preset: Preset, into: Schedule): Schedule => {
+	if (into.length < 2) {
+		return preset.schedule;
+	}
+	const { start, end } = nightOf(into);
+	return fitToNight(preset.schedule, start, end);
+};
+
+/**
+ * A schedule moved to a new bedtime and wake-up. A curve that still is a
+ * preset is fitted afresh from the preset, so rounding cannot drift it away
+ * from the preset however often the night changes; a hand-drawn curve is
+ * stretched as it is.
+ */
+export const changeNight = (
+	schedule: Schedule,
+	start: Time,
+	end: Time,
+): Schedule =>
+	fitToNight(matchingPreset(schedule)?.schedule ?? schedule, start, end);

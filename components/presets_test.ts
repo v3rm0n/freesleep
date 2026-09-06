@@ -8,11 +8,13 @@ import {
 	GRAPH_MIN_TEMPERATURE,
 	MAX_POINTS,
 	MIN_POINTS,
-	nightMinutes,
 	type Schedule,
 } from "./Graph.tsx";
+import { minutesAfter, nightOf } from "./night.ts";
 import {
+	changeNight,
 	DEFAULT_SCHEDULE,
+	loadPreset,
 	matchingPreset,
 	PRESETS,
 	temperatureRange,
@@ -61,9 +63,11 @@ Deno.test("orders each preset's points across the night within the graph's limit
 			schedule.length >= MIN_POINTS && schedule.length <= MAX_POINTS,
 			`${name} has ${schedule.length} points`,
 		);
+		const bedtime = schedule[0][0];
 		for (let i = 1; i < schedule.length; i++) {
 			assert(
-				nightMinutes(schedule[i][0]) > nightMinutes(schedule[i - 1][0]),
+				minutesAfter(bedtime, schedule[i][0]) >
+					minutesAfter(bedtime, schedule[i - 1][0]),
 				`${name}: ${schedule[i][0]} does not follow ${schedule[i - 1][0]}`,
 			);
 		}
@@ -150,4 +154,52 @@ Deno.test("matches by heating level, not by degrees", () => {
 	);
 	const reloaded: Schedule = [[time, nudged], ...rest];
 	assertEquals(matchingPreset(reloaded)?.id, PRESETS[0].id);
+});
+
+Deno.test("loads a preset into the night the side already has", () => {
+	const custom: Schedule = [
+		["23:00", 18],
+		["03:00", 16],
+		["07:00", 19],
+	];
+	const loaded = loadPreset(PRESETS[1], custom);
+	assertEquals(
+		loaded.map(([time]) => time),
+		["23:00", "00:35", "02:10", "03:50", "05:25", "07:00"],
+	);
+	assertEquals(
+		loaded.map(([, temperature]) => temperature),
+		PRESETS[1].schedule.map(([, temperature]) => temperature),
+	);
+	assertEquals(matchingPreset(loaded)?.id, PRESETS[1].id);
+});
+
+Deno.test("loads a preset as drawn when the side has nothing to fit it to", () => {
+	assertEquals(loadPreset(PRESETS[0], []), PRESETS[0].schedule);
+});
+
+Deno.test("keeps recognising a preset however often its night changes", () => {
+	const loaded = loadPreset(PRESETS[0], DEFAULT_SCHEDULE);
+	const later = changeNight(loaded, "23:00", "08:00");
+	const shorter = changeNight(later, "23:00", "07:00");
+	assertEquals(matchingPreset(shorter)?.id, PRESETS[0].id);
+	assertEquals(nightOf(shorter), {
+		start: "23:00",
+		end: "07:00",
+		minutes: 480,
+	});
+});
+
+Deno.test("stretches a hand-drawn curve when its night changes", () => {
+	const custom: Schedule = [
+		["22:00", 18],
+		["23:00", 17],
+		["08:00", 19],
+	];
+	assertEquals(changeNight(custom, "22:00", "06:00"), [
+		["22:00", 18],
+		["22:50", 17],
+		["06:00", 19],
+	]);
+	assertEquals(matchingPreset(custom), null);
 });

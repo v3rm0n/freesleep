@@ -1,12 +1,8 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../components/client.ts";
-import {
-	formatTime,
-	NIGHT_CROSSOVER_HOUR,
-	type Schedule,
-	type Time,
-} from "../components/Graph.tsx";
+import type { Schedule } from "../components/Graph.tsx";
 import { Login, Unavailable } from "../components/Login.tsx";
+import { formatTime, toISODateTime } from "../components/night.ts";
 import { DEFAULT_SCHEDULE } from "../components/presets.ts";
 import { LiveReading, SchedulePanel } from "../components/SchedulePanel.tsx";
 import { Notice, ThemeToggle, TopBar } from "../components/Shell.tsx";
@@ -41,19 +37,6 @@ type SaveStatus = "idle" | "saving" | "saved" | "error";
 const REFRESH_INTERVAL_MS = 60_000;
 // How long the "Saved" confirmation stays visible.
 const SAVED_NOTICE_MS = 2_000;
-
-// Schedule points travel as ISO timestamps: "HH:MM" on today's date, or on
-// tomorrow's for times before the night crossover, so a night sorts in order.
-// The server only looks at the time of day (see server/schedule.ts).
-const timeToISODateTime = (time: Time): string => {
-	const [hours, minutes] = time.split(":").map(Number);
-	const date = new Date();
-	date.setHours(hours, minutes, 0, 0);
-	if (hours < NIGHT_CROSSOVER_HOUR) {
-		date.setDate(date.getDate() + 1);
-	}
-	return date.toISOString();
-};
 
 // A side's saved points as graph data, or the default curve when the side has
 // never been drawn.
@@ -203,8 +186,10 @@ export default function App() {
 		const sequence = ++saveSequenceRef.current;
 		setSaveStatus("saving");
 		try {
+			// Points travel as ISO timestamps anchored to tonight, in night order
+			// (see components/night.ts); the server only looks at the time of day.
 			const levels = data.map(([time, temperature]) => ({
-				time: timeToISODateTime(time),
+				time: toISODateTime(time, data[0][0]),
 				level: temperatureToHeatingLevel(temperature),
 			}));
 			const response = await api.setExpectedState(side, { levels });

@@ -34,8 +34,9 @@
 	--radius-s: 8px;
 	--radius-m: 12px;
 	--radius-l: 20px;
-	/* Vertical space around the graph (top bar, toolbar, hint, paddings). */
-	--chrome: 210px;
+	/* Vertical space around the graph (top bar, toolbar, bedtime row, presets,
+	 * a two-line hint, paddings), so the 4:3 graph fits the viewport. */
+	--chrome: 276px;
 
 	color-scheme: dark;
 }
@@ -377,6 +378,81 @@ button {
 	cursor: grabbing;
 }
 
+/* Bedtime and wake-up under the two ends of the graph, with the length of the
+ * night between them. A <fieldset>, so reset its box. */
+.night {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	margin: 0;
+	padding: 0 2px;
+	min-inline-size: 0;
+	border: 0;
+}
+
+.night-edge {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	color: var(--muted);
+	font-size: 13px;
+	white-space: nowrap;
+}
+
+.night-edge--wake {
+	flex-direction: row-reverse;
+}
+
+.night input {
+	height: 32px;
+	padding: 0 8px;
+	border: 1px solid var(--border);
+	border-radius: var(--radius-s);
+	background: var(--surface);
+	color: var(--fg);
+	font-size: 14px;
+	font-weight: 500;
+	font-variant-numeric: tabular-nums;
+	transition:
+		border-color 0.15s ease,
+		box-shadow 0.15s ease;
+}
+
+.night input:hover {
+	border-color: var(--border-strong);
+}
+
+.night input:focus {
+	outline: none;
+	border-color: var(--focus);
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 25%, transparent);
+}
+
+/* The length sits on a rule spanning the night, like a dimension line. */
+.night-length {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	color: var(--faint);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+	text-align: center;
+}
+
+.night-length::before,
+.night-length::after {
+	content: "";
+	flex: 1;
+	height: 1px;
+	background: var(--border);
+}
+
+.night-length--refused {
+	color: var(--danger);
+}
+
 /* One-click starting curves under the graph. A <fieldset>, so reset its box. */
 .presets {
 	display: flex;
@@ -622,6 +698,13 @@ button {
 		min-width: 64px;
 	}
 
+	/* Stack each end's label over its field so both fit beside the length. */
+	.night-edge,
+	.night-edge--wake {
+		flex-direction: column;
+		gap: 4px;
+	}
+
 	/* Three equal chips in one row, the range under the name. */
 	.presets-label {
 		display: none;
@@ -645,6 +728,7 @@ button {
 	.button,
 	.segmented button,
 	.preset,
+	.night input,
 	.field input {
 		transition: none;
 	}
