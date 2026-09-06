@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../components/client.ts";
 import {
-	DEFAULT_SCHEDULE,
 	formatTime,
 	NIGHT_CROSSOVER_HOUR,
 	type Schedule,
 	type Time,
 } from "../components/Graph.tsx";
 import { Login, Unavailable } from "../components/Login.tsx";
+import { DEFAULT_SCHEDULE } from "../components/presets.ts";
 import { LiveReading, SchedulePanel } from "../components/SchedulePanel.tsx";
 import { Notice, ThemeToggle, TopBar } from "../components/Shell.tsx";
 import { useResolvedTheme } from "../components/theme.ts";

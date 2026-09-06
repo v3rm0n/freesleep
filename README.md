@@ -16,6 +16,8 @@ needed — run it locally (see [Running locally](#running-locally)) to try it.
 
 - 🌡️ **Draw your own night curve** — set a different temperature for each part of
   the night by dragging an interactive graph.
+- 🎚️ **Start from a preset** — load a Cold, Cool or Neutral night curve with one
+  click, then fine-tune it by dragging.
 - ➕ **Add / remove points** — double-click an empty gap to add a schedule point,
   or double-click a handle to remove it.
 - 🔴 **Live "now" marker** — see where you are in the night and the pod's current
@@ -37,6 +39,7 @@ night; the fill is tinted warm where the curve is high and cool where it dips.
 | Change a temperature | Drag a handle up or down (snaps to 0.5 °C) |
 | Add a schedule point | Double-click an empty gap on the curve |
 | Remove a point | Double-click its handle |
+| Load a preset | Click **Cold**, **Cool** or **Neutral** under the graph |
 | Switch side | **Left / Right** toggle above the graph |
 | Switch theme | Sun / moon button (top right) |
 | Sign out | **Sign out** (top right) |
@@ -115,6 +118,7 @@ components/
   Shell.tsx          top bar, theme toggle, full-page notices
   SchedulePanel.tsx  side toggle, live pod reading and the graph panel
   Graph.tsx          the paper.js temperature graph
+  presets.ts         built-in night curves; the default for an undrawn side
   Paper.tsx          lazy paper.js setup (browser-only)
   Login.tsx          sign-in form
 server/

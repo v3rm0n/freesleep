@@ -377,6 +377,67 @@ button {
 	cursor: grabbing;
 }
 
+/* One-click starting curves under the graph. A <fieldset>, so reset its box. */
+.presets {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	min-inline-size: 0;
+	border: 0;
+	align-items: center;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.presets-label {
+	margin-right: 2px;
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.preset {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	height: 32px;
+	padding: 0 12px;
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	background: var(--surface);
+	color: var(--fg);
+	font-size: 13px;
+	font-weight: 500;
+	transition:
+		background 0.15s ease,
+		border-color 0.15s ease,
+		color 0.15s ease;
+}
+
+.preset:hover:not([aria-pressed="true"]) {
+	background: var(--surface-hover);
+	border-color: var(--border-strong);
+}
+
+.preset[aria-pressed="true"] {
+	background: var(--accent);
+	border-color: var(--accent);
+	color: var(--accent-fg);
+	font-weight: 600;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.preset-range {
+	color: var(--muted);
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+.preset[aria-pressed="true"] .preset-range {
+	color: inherit;
+	opacity: 0.8;
+}
+
 .hint {
 	margin: 0;
 	color: var(--muted);
@@ -561,6 +622,20 @@ button {
 		min-width: 64px;
 	}
 
+	/* Three equal chips in one row, the range under the name. */
+	.presets-label {
+		display: none;
+	}
+
+	.preset {
+		flex: 1 1 0;
+		flex-direction: column;
+		gap: 2px;
+		height: auto;
+		padding: 7px 8px;
+		border-radius: 12px;
+	}
+
 	.login-card {
 		padding: 28px 22px 24px;
 	}
@@ -569,6 +644,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
 	.button,
 	.segmented button,
+	.preset,
 	.field input {
 		transition: none;
 	}

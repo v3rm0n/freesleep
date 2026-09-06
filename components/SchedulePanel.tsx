@@ -8,6 +8,7 @@ import {
 	type Temperature,
 } from "./Graph.tsx";
 import PaperProvider from "./Paper.tsx";
+import { matchingPreset, PRESETS, temperatureRange } from "./presets.ts";
 import type { Theme } from "./theme.ts";
 
 export const SIDES: readonly Side[] = ["left", "right"];
@@ -66,6 +67,45 @@ export const LiveReading = ({ active, current, target }: LiveReadingProps) => (
 	</span>
 );
 
+interface PresetsProps {
+	data: Schedule;
+	onChange: (data: Schedule) => void;
+}
+
+/**
+ * One-click starting curves. The preset the schedule still matches shows as
+ * pressed; dragging a handle afterwards releases it.
+ */
+const Presets = ({ data, onChange }: PresetsProps) => {
+	const active = matchingPreset(data);
+	return (
+		<fieldset class="presets">
+			<legend class="visually-hidden">Presets</legend>
+			<span class="presets-label" aria-hidden="true">
+				Presets
+			</span>
+			{PRESETS.map((preset) => {
+				const { min, max } = temperatureRange(preset.schedule);
+				return (
+					<button
+						key={preset.id}
+						type="button"
+						class="preset"
+						aria-pressed={active?.id === preset.id}
+						title={preset.description}
+						onClick={() => onChange(preset.schedule)}
+					>
+						<span class="preset-name">{preset.name}</span>{" "}
+						<span class="preset-range">
+							{min}–{formatTemperature(max)}
+						</span>
+					</button>
+				);
+			})}
+		</fieldset>
+	);
+};
+
 interface SchedulePanelProps {
 	side: Side;
 	onSideChange: (side: Side) => void;
@@ -102,6 +142,7 @@ export const SchedulePanel = ({
 				key={`${side}-${data.length}-graph`}
 			/>
 		</PaperProvider>
+		<Presets data={data} onChange={onChange} />
 		<p class="hint">
 			Drag a handle to change its temperature.{" "}
 			<span class="nowrap">Double-click</span> or{" "}

@@ -25,16 +25,6 @@ interface GraphProps {
 	label?: string;
 }
 
-/** The curve shown for a side that has no saved schedule yet. */
-export const DEFAULT_SCHEDULE: Schedule = [
-	["22:00", 18.5],
-	["00:00", 16.2],
-	["02:00", 15.0],
-	["04:00", 14.8],
-	["06:00", 16.5],
-	["08:00", 19.0],
-];
-
 // Sleep schedules run from the evening across midnight into the morning. Times
 // before this hour belong to the morning of the following day.
 export const NIGHT_CROSSOVER_HOUR = 12;
@@ -49,7 +39,7 @@ export const formatTime = (date: Date): Time =>
 
 // Map a "HH:MM" to minutes on the continuous night axis so before-noon times
 // sort after late-evening ones.
-const nightMinutes = (time: Time): number => {
+export const nightMinutes = (time: Time): number => {
 	const [h, m] = time.split(":").map(Number);
 	const mins = h * 60 + m;
 	return h < NIGHT_CROSSOVER_HOUR ? mins + MINUTES_PER_DAY : mins;
@@ -60,8 +50,8 @@ const minutesToTime = (mins: number): Time => {
 	return `${pad2(Math.floor(wrapped / 60))}:${pad2(wrapped % 60)}`;
 };
 
-const MIN_POINTS = 2;
-const MAX_POINTS = 12;
+export const MIN_POINTS = 2;
+export const MAX_POINTS = 12;
 
 // The scene is authored in a fixed 400×300 space and scaled to the canvas.
 const SCENE_WIDTH = 400;

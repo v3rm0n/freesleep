@@ -1,5 +1,6 @@
 import { useState } from "preact/hooks";
-import { DEFAULT_SCHEDULE, type Schedule } from "../components/Graph.tsx";
+import type { Schedule } from "../components/Graph.tsx";
+import { DEFAULT_SCHEDULE } from "../components/presets.ts";
 import { LiveReading, SchedulePanel } from "../components/SchedulePanel.tsx";
 import { ThemeToggle, TopBar } from "../components/Shell.tsx";
 import { useResolvedTheme } from "../components/theme.ts";
