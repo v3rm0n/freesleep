@@ -25,12 +25,13 @@ export const Login = ({ onLoginSuccess }: LoginProps) => {
 		try {
 			const response = await api.login({ username, password });
 
-			const result = await response.json();
-
-			if (response.ok && "success" in result && result.success) {
+			if (response.ok) {
 				onLoginSuccess();
 			} else {
-				setError("message" in result ? result.message : "Login failed");
+				const result = (await response.json().catch(() => null)) as {
+					message?: string;
+				} | null;
+				setError(result?.message ?? "Login failed");
 			}
 		} catch (err) {
 			setError("Network error. Please try again.");

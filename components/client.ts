@@ -4,9 +4,8 @@ import type { ExpectedStateSide } from "../server/state.ts";
 const JSON_HEADERS = { "Content-Type": "application/json" };
 
 /**
- * Typed wrapper around the FreeSleep JSON API. Replaces the Hono RPC client
- * (`hc<AppType>`). Response shapes are annotated at the call sites using the
- * exported types from `server/state.ts`.
+ * Typed wrapper around the FreeSleep JSON API. Response shapes are annotated at
+ * the call sites using the exported types from `server/state.ts`.
  */
 export const api = {
 	getState: (): Promise<Response> =>

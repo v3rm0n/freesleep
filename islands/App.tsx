@@ -1,69 +1,80 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { api } from "../components/client.ts";
-import { Graph, type Temperature, type Time } from "../components/Graph.tsx";
+import {
+	DEFAULT_SCHEDULE,
+	formatTime,
+	Graph,
+	NIGHT_CROSSOVER_HOUR,
+	type Temperature,
+	type Time,
+} from "../components/Graph.tsx";
 import { Login } from "../components/Login.tsx";
 import PaperProvider from "../components/Paper.tsx";
-import {
-	heatingLevelToTemperatureMap,
-	maximumTemperature,
-	minimumTemperature,
-} from "../server/constants.ts";
+import { useResolvedTheme } from "../components/theme.ts";
 import type { Side } from "../server/eightsleep_api/model/index.ts";
-import type { CurrentState, ExpectedState } from "../server/state.ts";
+import type {
+	CurrentState,
+	ExpectedState,
+	ExpectedStateSide,
+} from "../server/state.ts";
+import {
+	heatingLevelToTemperature,
+	temperatureToHeatingLevel,
+} from "../server/temperature.ts";
+
+type Schedule = [Time, Temperature][];
+type Schedules = Record<Side, Schedule>;
+
+const DEFAULT_SCHEDULES: Schedules = {
+	left: DEFAULT_SCHEDULE,
+	right: DEFAULT_SCHEDULE,
+};
+
+// Schedule points travel as ISO timestamps: "HH:MM" on today's date, or on
+// tomorrow's for times before the night crossover, so a night sorts in order.
+// The server only looks at the time of day (see server/schedule.ts).
+const timeToISODateTime = (time: Time): string => {
+	const [hours, minutes] = time.split(":").map(Number);
+	const date = new Date();
+	date.setHours(hours, minutes, 0, 0);
+	if (hours < NIGHT_CROSSOVER_HOUR) {
+		date.setDate(date.getDate() + 1);
+	}
+	return date.toISOString();
+};
+
+// A side's saved points as graph data, or the default curve when the side has
+// never been drawn.
+const toSchedule = ({ levels }: ExpectedStateSide): Schedule => {
+	if (levels.length === 0) {
+		return DEFAULT_SCHEDULE;
+	}
+	return [...levels]
+		.sort((a, b) => Date.parse(a.time) - Date.parse(b.time))
+		.map(({ time, level }) => [
+			formatTime(new Date(time)),
+			heatingLevelToTemperature(level),
+		]);
+};
 
 export default function App() {
-	const initialState: [Time, Temperature][] = [
-		["22:00", 18.5],
-		["00:00", 16.2],
-		["02:00", 15.0],
-		["04:00", 14.8],
-		["06:00", 16.5],
-		["08:00", 19.0],
-	];
-
 	const [currentState, setCurrentState] = useState<
 		CurrentState | null | undefined
 	>(undefined);
-	const [expectedState, setExpectedState] = useState<ExpectedState | null>(
-		null,
-	);
+	const [schedules, setSchedules] = useState<Schedules>(DEFAULT_SCHEDULES);
 	const [currentSide, setCurrentSide] = useState<Side>("left");
-	const [temperatureData, setTemperatureData] =
-		useState<[Time, Temperature][]>(initialState);
-	const [theme, setTheme] = useState<"dark" | "light">("dark");
-
-	// Adopt the theme the no-flash script in _app.tsx already resolved.
-	useEffect(() => {
-		const resolved =
-			(document.documentElement.dataset.theme as "dark" | "light") ?? "dark";
-		setTheme(resolved);
-	}, []);
-
-	const toggleTheme = () => {
-		setTheme((prev) => {
-			const next = prev === "dark" ? "light" : "dark";
-			document.documentElement.dataset.theme = next;
-			try {
-				localStorage.setItem("freesleep-theme", next);
-			} catch {
-				// ignore storage being unavailable
-			}
-			return next;
-		});
-	};
+	const [theme, toggleTheme] = useResolvedTheme();
 
 	const checkAuthentication = async () => {
 		try {
 			const response = await api.getState();
 			if (response.ok) {
-				const result = (await response.json()) as CurrentState;
-				console.log(result);
-				setCurrentState(result);
+				setCurrentState((await response.json()) as CurrentState);
 			} else {
 				setCurrentState(null);
 			}
 		} catch (error) {
-			console.log("Authentication check failed:", error);
+			console.error("Authentication check failed:", error);
 			setCurrentState(null);
 		}
 	};
@@ -72,9 +83,30 @@ export default function App() {
 		checkAuthentication();
 	}, []);
 
-	const handleLoginSuccess = () => {
-		checkAuthentication();
+	const loadSchedules = async () => {
+		try {
+			const response = await api.getExpectedState();
+			if (!response.ok) {
+				throw new Error(`Unexpected status ${response.status}`);
+			}
+			const result = (await response.json()) as ExpectedState | null;
+			setSchedules(
+				result
+					? { left: toSchedule(result.left), right: toSchedule(result.right) }
+					: DEFAULT_SCHEDULES,
+			);
+		} catch (error) {
+			console.error("Error loading the schedule:", error);
+			setSchedules(DEFAULT_SCHEDULES);
+		}
 	};
+
+	// Load the saved schedules once authenticated.
+	useEffect(() => {
+		if (currentState) {
+			loadSchedules();
+		}
+	}, [currentState]);
 
 	const handleLogout = async () => {
 		try {
@@ -86,216 +118,26 @@ export default function App() {
 			console.error("Error during logout:", error);
 		} finally {
 			setCurrentState(null);
-			setTemperatureData(initialState);
-			setExpectedState(null);
+			setSchedules(DEFAULT_SCHEDULES);
 		}
 	};
 
-	const handleSideChange = (side: Side) => {
-		setCurrentSide(side);
-	};
-
-	// Helper function to convert heating level (-100 to 100) to temperature (13°C to 44°C)
-	const heatingLevelToTemperature = (level: number): number => {
-		// Use the exact mapping table
-		const levelStr = level.toString();
-		if (levelStr in heatingLevelToTemperatureMap) {
-			return heatingLevelToTemperatureMap[
-				levelStr as keyof typeof heatingLevelToTemperatureMap
-			];
-		}
-
-		// For levels not in the table, find the closest mapping points and interpolate
-		const levels = Object.keys(heatingLevelToTemperatureMap)
-			.map(Number)
-			.sort((a, b) => a - b);
-
-		// Find the two closest levels
-		let lowerLevel = levels[0];
-		let upperLevel = levels[levels.length - 1];
-
-		for (let i = 0; i < levels.length - 1; i++) {
-			if (levels[i] <= level && levels[i + 1] >= level) {
-				lowerLevel = levels[i];
-				upperLevel = levels[i + 1];
-				break;
-			}
-		}
-
-		// Interpolate between the two closest points
-		const lowerTemp =
-			heatingLevelToTemperatureMap[
-				lowerLevel.toString() as keyof typeof heatingLevelToTemperatureMap
-			];
-		const upperTemp =
-			heatingLevelToTemperatureMap[
-				upperLevel.toString() as keyof typeof heatingLevelToTemperatureMap
-			];
-
-		if (lowerLevel === upperLevel) {
-			return lowerTemp;
-		}
-
-		const ratio = (level - lowerLevel) / (upperLevel - lowerLevel);
-		return lowerTemp + ratio * (upperTemp - lowerTemp);
-	};
-
-	// Helper function to convert temperature (13°C to 44°C) to heating level (-100 to 100)
-	const temperatureToHeatingLevel = (temp: number): number => {
-		// Clamp temperature to valid range first
-		const clampedTemp = Math.max(
-			minimumTemperature,
-			Math.min(maximumTemperature, temp),
-		);
-
-		// Find exact match in the mapping table
-		for (const [levelStr, mappedTemp] of Object.entries(
-			heatingLevelToTemperatureMap,
-		)) {
-			if (mappedTemp === clampedTemp) {
-				return Number(levelStr);
-			}
-		}
-
-		// No exact match, find the closest temperature points and interpolate
-		const entries = Object.entries(heatingLevelToTemperatureMap)
-			.map(([level, temperature]) => ({ level: Number(level), temperature }))
-			.sort((a, b) => a.temperature - b.temperature);
-
-		// Find the two closest temperature points
-		let lowerEntry = entries[0];
-		let upperEntry = entries[entries.length - 1];
-
-		for (let i = 0; i < entries.length - 1; i++) {
-			if (
-				entries[i].temperature <= clampedTemp &&
-				entries[i + 1].temperature >= clampedTemp
-			) {
-				lowerEntry = entries[i];
-				upperEntry = entries[i + 1];
-				break;
-			}
-		}
-
-		// Interpolate between the two closest points
-		if (lowerEntry.temperature === upperEntry.temperature) {
-			return lowerEntry.level;
-		}
-
-		const ratio =
-			(clampedTemp - lowerEntry.temperature) /
-			(upperEntry.temperature - lowerEntry.temperature);
-		const interpolatedLevel =
-			lowerEntry.level + ratio * (upperEntry.level - lowerEntry.level);
-
-		return Math.round(interpolatedLevel);
-	};
-
-	// Helper function to convert time string to ISO datetime, handling midnight crossover
-	const timeToISODateTime = (timeStr: string, baseDate?: Date): string => {
-		const base = baseDate || new Date();
-		const [hours, minutes] = timeStr.split(":").map(Number);
-		const date = new Date(base);
-		date.setHours(hours, minutes, 0, 0);
-
-		// If the time is before 12:00 PM, assume it's the next day (for sleep schedules)
-		if (hours < 12) {
-			date.setDate(date.getDate() + 1);
-		}
-
-		return date.toISOString();
-	};
-
-	// Helper function to convert ISO datetime to time string
-	const isoDateTimeToTime = (isoString: string): string => {
-		const date = new Date(isoString);
-		return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
-	};
-
-	// Helper function to convert API data to graph format while preserving time order
-	const convertApiToGraphData = (
-		apiData: { levels: Array<{ time: Time; level: number }> } | null,
-	) => {
-		if (!apiData || !apiData.levels || apiData.levels.length === 0) {
-			return [];
-		}
-
-		// Sort by time to ensure proper order
-		const sortedLevels = [...apiData.levels].sort((a, b) => {
-			return new Date(a.time).getTime() - new Date(b.time).getTime();
-		});
-
-		return sortedLevels.map((level) => [
-			isoDateTimeToTime(level.time),
-			heatingLevelToTemperature(level.level),
-		]);
-	};
-
-	const loadExpectedState = async () => {
+	const handleTemperatureChange = async (data: Schedule) => {
+		// Controlled: adopt the new curve immediately, then persist it.
+		setSchedules((previous) => ({ ...previous, [currentSide]: data }));
 		try {
-			const response = await api.getExpectedState();
-			if (response.ok) {
-				const result = (await response.json()) as ExpectedState | null;
-				if (!result) {
-					setTemperatureData(initialState);
-					return;
-				} else {
-					setExpectedState(result);
-				}
-			} else {
-				console.error("Failed to fetch expected state");
-				// Use default data on error
-				setTemperatureData(initialState);
+			const levels = data.map(([time, temperature]) => ({
+				time: timeToISODateTime(time),
+				level: temperatureToHeatingLevel(temperature),
+			}));
+			const response = await api.setExpectedState(currentSide, { levels });
+			if (!response.ok) {
+				console.error(`Failed to save the schedule (${response.status})`);
 			}
 		} catch (error) {
-			console.error("Error loading expected state:", error);
-			// Use default data on error
-			setTemperatureData(initialState);
+			console.error("Error saving the schedule:", error);
 		}
 	};
-
-	useEffect(() => {
-		if (expectedState) {
-			const levels = expectedState[currentSide].levels;
-			if (levels && levels.length > 0) {
-				// Convert API data to graph format with proper ordering
-				const graphData = convertApiToGraphData(expectedState[currentSide]);
-				setTemperatureData(graphData as [Time, Temperature][]);
-			}
-		}
-	}, [expectedState, currentSide]);
-
-	// Load expected state when authenticated or side changes
-	useEffect(() => {
-		if (currentState) {
-			loadExpectedState();
-		}
-	}, [currentState]);
-
-	const handleTemperatureChange = useCallback(
-		async (data: [Time, Temperature][]) => {
-			// Controlled: adopt the new curve immediately, then persist it.
-			setTemperatureData(data);
-			try {
-				const levels = data.map(([t, temp]) => {
-					return {
-						time: timeToISODateTime(t),
-						level: temperatureToHeatingLevel(temp),
-					};
-				});
-
-				// Submit to API
-				const response = await api.setExpectedState(currentSide, { levels });
-
-				if (!response.ok) {
-					console.error("Failed to update expected state");
-				}
-			} catch (error) {
-				console.error("Error updating expected state:", error);
-			}
-		},
-		[currentSide],
-	);
 
 	// Show loading state while checking authentication
 	if (currentState === undefined) {
@@ -316,21 +158,15 @@ export default function App() {
 
 	// Show login page if not authenticated
 	if (!currentState) {
-		return <Login onLoginSuccess={handleLoginSuccess} />;
+		return <Login onLoginSuccess={checkAuthentication} />;
 	}
 
-	const nowDate = new Date();
+	const temperatureData = schedules[currentSide];
 	const nowMarker = {
-		time: `${nowDate.getHours().toString().padStart(2, "0")}:${nowDate
-			.getMinutes()
-			.toString()
-			.padStart(2, "0")}`,
-		temperature:
-			Math.round(
-				heatingLevelToTemperature(
-					currentState[currentSide].currentLevel.level,
-				) * 10,
-			) / 10,
+		time: formatTime(new Date()),
+		temperature: heatingLevelToTemperature(
+			currentState[currentSide].currentLevel.level,
+		),
 	};
 
 	return (
@@ -361,7 +197,7 @@ export default function App() {
 								<button
 									key={side}
 									type="button"
-									onClick={() => handleSideChange(side)}
+									onClick={() => setCurrentSide(side)}
 									style={{
 										padding: "8px 16px",
 										backgroundColor:

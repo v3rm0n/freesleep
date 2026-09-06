@@ -1,11 +1,11 @@
 import type * as paper from "paper";
 import { useEffect, useRef } from "preact/hooks";
+import { minimumTemperature } from "../server/constants.ts";
 import { usePaper } from "./Paper.tsx";
+import type { Theme } from "./theme.ts";
 
 export type Time = string;
 export type Temperature = number;
-
-export type GraphTheme = "dark" | "light";
 
 export interface NowMarker {
 	time: Time;
@@ -17,26 +17,95 @@ interface GraphProps {
 	onChange?: (data: [Time, Temperature][]) => void;
 	/** Live reading: where we are in the night and the pod's current temperature. */
 	now?: NowMarker;
-	theme?: GraphTheme;
+	theme?: Theme;
 }
 
-// Sleep schedules run from the evening across midnight into the morning. Map a
-// "HH:MM" to minutes on that continuous night axis so before-noon times sort
-// after late-evening ones.
+/** The curve shown for a side that has no saved schedule yet. */
+export const DEFAULT_SCHEDULE: [Time, Temperature][] = [
+	["22:00", 18.5],
+	["00:00", 16.2],
+	["02:00", 15.0],
+	["04:00", 14.8],
+	["06:00", 16.5],
+	["08:00", 19.0],
+];
+
+// Sleep schedules run from the evening across midnight into the morning. Times
+// before this hour belong to the morning of the following day.
+export const NIGHT_CROSSOVER_HOUR = 12;
+
+const MINUTES_PER_DAY = 24 * 60;
+
 const pad2 = (n: number) => n.toString().padStart(2, "0");
+
+/** Formats a wall-clock time as "HH:MM". */
+export const formatTime = (date: Date): Time =>
+	`${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+// Map a "HH:MM" to minutes on the continuous night axis so before-noon times
+// sort after late-evening ones.
 const nightMinutes = (time: Time): number => {
 	const [h, m] = time.split(":").map(Number);
 	const mins = h * 60 + m;
-	return h < 12 ? mins + 24 * 60 : mins;
+	return h < NIGHT_CROSSOVER_HOUR ? mins + MINUTES_PER_DAY : mins;
 };
 const minutesToTime = (mins: number): Time => {
-	const wrapped = ((Math.round(mins) % (24 * 60)) + 24 * 60) % (24 * 60);
+	const wrapped =
+		((Math.round(mins) % MINUTES_PER_DAY) + MINUTES_PER_DAY) % MINUTES_PER_DAY;
 	return `${pad2(Math.floor(wrapped / 60))}:${pad2(wrapped % 60)}`;
 };
 
 const MIN_POINTS = 2;
 const MAX_POINTS = 12;
+
+// The scene is authored in a fixed 400×300 space and scaled to the canvas.
+const SCENE_WIDTH = 400;
+const SCENE_HEIGHT = 300;
+const AXIS_LEFT_X = 25;
+const AXIS_RIGHT_X = 375;
+const AXIS_TOP_Y = 30;
+const AXIS_BOTTOM_Y = 275;
+
+// Temperature range the graph can display. Eight Sleep levels reach 44 °C, but
+// the UI deliberately offers the sleeping range only.
+export const GRAPH_MIN_TEMPERATURE = minimumTemperature;
+export const GRAPH_MAX_TEMPERATURE = 30;
+const GRAPH_TEMPERATURE_SPAN = GRAPH_MAX_TEMPERATURE - GRAPH_MIN_TEMPERATURE;
+const AXIS_HEIGHT = AXIS_BOTTOM_Y - AXIS_TOP_Y;
+
+const clampTemperature = (t: number) =>
+	Math.max(GRAPH_MIN_TEMPERATURE, Math.min(GRAPH_MAX_TEMPERATURE, t));
 const snapTemperature = (t: number) => Math.round(t * 2) / 2; // 0.5°C steps
+const roundTemperature = (t: number) => Math.round(t * 10) / 10;
+const temperatureToY = (temp: number): number =>
+	AXIS_BOTTOM_Y -
+	((temp - GRAPH_MIN_TEMPERATURE) / GRAPH_TEMPERATURE_SPAN) * AXIS_HEIGHT;
+const yToTemperature = (y: number): number =>
+	GRAPH_MIN_TEMPERATURE +
+	((AXIS_BOTTOM_Y - y) / AXIS_HEIGHT) * GRAPH_TEMPERATURE_SPAN;
+
+// Below this (unscaled) y the fill/line gradient is fully "cold".
+const GRADIENT_COLD_Y = 170;
+// Double-clicking within this (unscaled) distance of a handle removes it.
+const REMOVE_HIT_DISTANCE = 16;
+
+/** Evenly spaced x positions for `count` schedule points. */
+const getXPositions = (count: number): number[] => {
+	if (count === 1) return [SCENE_WIDTH / 2];
+	const spacing = (AXIS_RIGHT_X - AXIS_LEFT_X) / (count - 1);
+	return Array.from({ length: count }, (_, i) => AXIS_LEFT_X + i * spacing);
+};
+
+/** Index of the position closest to `x`. */
+const nearestIndex = (positions: number[], x: number): number => {
+	let nearest = 0;
+	for (let i = 1; i < positions.length; i++) {
+		if (Math.abs(positions[i] - x) < Math.abs(positions[nearest] - x)) {
+			nearest = i;
+		}
+	}
+	return nearest;
+};
 
 interface Palette {
 	grid: paper.Color;
@@ -53,14 +122,26 @@ interface Palette {
 	fillAlpha: number;
 }
 
+interface ReferenceLabels {
+	time: paper.PointText;
+	temperature: paper.PointText;
+}
+
 export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 	const { paper } = usePaper();
+	// Latest props for the paper.js handlers, which are bound once per scene.
+	const dataRef = useRef(data);
+	dataRef.current = data;
+	const onChangeRef = useRef(onChange);
+	onChangeRef.current = onChange;
+
 	const graphRef = useRef<paper.Path | null>(null);
 	const lineRef = useRef<paper.Path | null>(null);
 	const nodeItemsRef = useRef<paper.Path[]>([]);
 	const nodesGroupRef = useRef<paper.Group | null>(null);
 	const xAxisRef = useRef<paper.Path | null>(null);
 	const referenceLinesRef = useRef<paper.Group | null>(null);
+	const referenceLabelsRef = useRef<ReferenceLabels[]>([]);
 	const allElementsRef = useRef<paper.Group | null>(null);
 	const nowGroupRef = useRef<paper.Group | null>(null);
 	const paletteRef = useRef<Palette | null>(null);
@@ -69,15 +150,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 	// Set when a structural/drag change drives an onChange so the controlled
 	// re-render doesn't replay the load tween.
 	const skipTweenRef = useRef(false);
-	const dragStateRef = useRef<{
-		isDragging: boolean;
-		moved: boolean;
-		changedPoints: Map<string, number>;
-	}>({
-		isDragging: false,
-		moved: false,
-		changedPoints: new Map(),
-	});
+	const dragStateRef = useRef({ isDragging: false, moved: false });
 
 	const buildPalette = (): Palette =>
 		theme === "light"
@@ -110,77 +183,41 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 					fillAlpha: 0.45,
 				};
 
-	// Rescale function - moved outside useEffects to be accessible by both
+	// Scale the whole scene from the authored 400×300 space to the canvas size.
 	const rescale = (size: paper.Size) => {
-		if (!allElementsRef.current || !scaleRef.current) return;
-		// Calculate new absolute scale factors
-		const newXScale = size.width / 400;
-		const newYScale = size.height / 300;
-		// Apply the relative scaling
+		if (!allElementsRef.current) return;
+		const newXScale = size.width / SCENE_WIDTH;
+		const newYScale = size.height / SCENE_HEIGHT;
 		allElementsRef.current.scale(
 			newXScale / scaleRef.current.x,
 			newYScale / scaleRef.current.y,
 			[0, 0],
 		);
-		// Update the current scale factors
-		scaleRef.current.x = newXScale;
-		scaleRef.current.y = newYScale;
+		scaleRef.current = { x: newXScale, y: newYScale };
 	};
 
-	// Helper functions for coordinate conversion
-	const getXPositions = (dataLength: number): number[] => {
-		if (dataLength === 1) return [200]; // Center position for single point
-		const startX = 25;
-		const endX = 375;
-		const spacing = (endX - startX) / (dataLength - 1);
-		return Array.from({ length: dataLength }, (_, i) => startX + i * spacing);
-	};
-
-	const timeToX = (time: string): number => {
-		if (!data || data.length === 0) return 25;
-		const times = data.map(([t]) => t);
-		const positions = getXPositions(data.length);
+	// Unscaled x of a schedule point, by its position in the current data.
+	const timeToX = (time: Time): number => {
+		const times = dataRef.current.map(([t]) => t);
 		const index = times.indexOf(time);
-		return index !== -1 ? positions[index] : positions[0];
+		return getXPositions(times.length)[index === -1 ? 0 : index] ?? AXIS_LEFT_X;
 	};
 
-	const xToTime = (x: number): string => {
-		if (!data || data.length === 0) return "00:00";
-		const times = data.map(([t]) => t);
-		const positions = getXPositions(data.length);
-
-		let closestIndex = 0;
-		let minDistance = Math.abs(x - positions[0]);
-
-		for (let i = 1; i < positions.length; i++) {
-			const distance = Math.abs(x - positions[i]);
-			if (distance < minDistance) {
-				minDistance = distance;
-				closestIndex = i;
-			}
-		}
-
-		return times[closestIndex];
-	};
-
-	const temperatureToY = (temp: number): number => {
-		// Temperature range: 13°C (y=275) to 30°C (y=30)
-		// Linear interpolation: y = 275 - ((temp - 13) / 17) * 245
-		return 275 - ((temp - 13) / 17) * 245;
-	};
-
-	const yToTemperature = (y: number): number => {
-		// Inverse of temperatureToY
-		return 13 + ((275 - y) / 245) * 17;
+	// Time of the schedule point nearest to an unscaled x.
+	const xToTime = (x: number): Time => {
+		const current = dataRef.current;
+		if (current.length === 0) return "00:00";
+		return current[nearestIndex(getXPositions(current.length), x)][0];
 	};
 
 	// Position of a wall-clock time on the (unscaled) x-axis, interpolated within
 	// whichever pair of schedule points brackets it. Returns null when the time
 	// falls outside the scheduled window.
 	const timeToFractionalX = (time: Time): number | null => {
-		if (data.length < 2) return null;
-		const positions = getXPositions(data.length);
-		const minutes = data.map(([t]) => nightMinutes(t));
+		const current = dataRef.current;
+		if (current.length < 2) return null;
+		const positions = getXPositions(current.length);
+		const minutes = current.map(([t]) => nightMinutes(t));
 		const target = nightMinutes(time);
 		if (target < minutes[0] || target > minutes[minutes.length - 1])
 			return null;
@@ -194,18 +231,17 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		return null;
 	};
 
-	// Shared refreshGraph function that can be used by both useEffects
+	// Re-derive everything that follows the curve: smoothing, gradients, the top
+	// line, the handles and the per-point labels.
 	const refreshGraph = () => {
-		if (!graphRef.current || !xAxisRef.current || !referenceLinesRef.current)
-			return;
-
 		const graph = graphRef.current;
 		const xAxis = xAxisRef.current;
 		const referenceLines = referenceLinesRef.current;
+		if (!graph || !xAxis || !referenceLines) return;
+
 		const curveSegments = curveSegmentsRef.current;
 		const fillAlpha = paletteRef.current?.fillAlpha ?? 0.45;
-
-		if (!curveSegments) return;
+		const scaleY = scaleRef.current.y;
 
 		// Smoothen
 		for (let i = 0; i < graph.segments.length; i++) {
@@ -235,12 +271,9 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		const neutral = new paper.Color(0.62, 0.36, 0.95); // violet – mid
 		const cold = new paper.Color(0.2, 0.55, 1.0); // azure – coolest
 
-		curveSegments.forEach((segment) => {
+		for (const segment of curveSegments) {
 			const point = segment.point;
-			if (!scaleRef.current) return;
-
-			let t = point.y / (170 * scaleRef.current.y);
-			t = Math.max(0, Math.min(1, t));
+			const t = Math.max(0, Math.min(1, point.y / (GRADIENT_COLD_Y * scaleY)));
 
 			let r: number, g: number, b: number, f: number;
 
@@ -263,7 +296,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 			lineStops.push(
 				new paper.GradientStop(new paper.Color(r, g, b, 1), offset),
 			);
-		});
+		}
 
 		const fillGradient = new paper.Gradient();
 		fillGradient.stops = fillStops;
@@ -295,19 +328,23 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		nodesGroupRef.current?.bringToFront();
 		nowGroupRef.current?.bringToFront();
 
-		curveSegments.forEach((segment) => {
-			if (!scaleRef.current) return;
-			const index = curveSegments.indexOf(segment);
-			const referenceGroup = referenceLines.children[index] as paper.Group;
-			if (referenceGroup?.lastChild) {
-				(referenceGroup.lastChild as paper.PointText).content =
-					`${Math.round(yToTemperature(segment.point.y / scaleRef.current.y) * 10) / 10}°`;
+		// Per-point readouts: the temperature above, the time below.
+		const labels = referenceLabelsRef.current;
+		const current = dataRef.current;
+		curveSegments.forEach((segment, index) => {
+			const label = labels[index];
+			if (!label) return;
+			label.temperature.content = `${roundTemperature(
+				yToTemperature(segment.point.y / scaleY),
+			)}°`;
+			if (current[index]) {
+				label.time.content = current[index][0];
 			}
 		});
 	};
 
-	// Build (or rebuild) the whole scene. Re-runs on theme change; reads the
-	// latest `data`/`onChange` from closure on each build.
+	// Build (or rebuild) the whole scene. Re-runs on theme change; the handlers
+	// read the latest `data`/`onChange` through refs, so they never go stale.
 	useEffect(() => {
 		// Clean up existing objects
 		if (allElementsRef.current) {
@@ -319,18 +356,16 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		paletteRef.current = palette;
 		scaleRef.current = { x: 1, y: 1 };
 
-		// Get x positions based on data length
-		const xPositions = getXPositions(data.length);
+		const initial = dataRef.current;
+		const xPositions = getXPositions(initial.length);
 
-		// Create graph segments with actual data positions
-		const graphSegments: [number, number][] = [];
-		data.forEach(([, temperature], i) => {
-			graphSegments.push([xPositions[i], temperatureToY(temperature)]);
-		});
-		graphSegments.push([xPositions[xPositions.length - 1], 275]); // Last point
-		graphSegments.push([xPositions[0], 275]); // Back to first point
+		// The filled area: the curve plus a baseline back along the axis.
+		const graphSegments: [number, number][] = initial.map(
+			([, temperature], i) => [xPositions[i], temperatureToY(temperature)],
+		);
+		graphSegments.push([xPositions[xPositions.length - 1], AXIS_BOTTOM_Y]);
+		graphSegments.push([xPositions[0], AXIS_BOTTOM_Y]);
 
-		// Create graph
 		const graph = new paper.Path({
 			segments: graphSegments,
 			closed: true,
@@ -341,7 +376,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		// Crisp top line drawn over the translucent fill. It's an open path with no
 		// baseline; refreshGraph keeps its points/handles synced to the curve.
 		const line = new paper.Path({
-			segments: data.map(([, temperature], i) => [
+			segments: initial.map(([, temperature], i) => [
 				xPositions[i],
 				temperatureToY(temperature),
 			]),
@@ -354,7 +389,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		lineRef.current = line;
 
 		// Visible draggable handles so it's obvious the curve can be dragged.
-		const nodeItems = data.map(([, temperature], i) => {
+		const nodeItems = initial.map(([, temperature], i) => {
 			const node = new paper.Path.Circle({
 				center: [xPositions[i], temperatureToY(temperature)],
 				radius: 5,
@@ -370,23 +405,24 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		const nodesGroup = new paper.Group(nodeItems);
 		nodesGroupRef.current = nodesGroup;
 
-		// Create x-axis
 		const xAxis = new paper.Path({
 			segments: [
-				[xPositions[0], 275],
-				[xPositions[xPositions.length - 1], 275],
+				[xPositions[0], AXIS_BOTTOM_Y],
+				[xPositions[xPositions.length - 1], AXIS_BOTTOM_Y],
 			],
 			strokeColor: palette.axis,
 			strokeWidth: 1,
 		});
 		xAxisRef.current = xAxis;
 
-		// Helper function to create reference lines
-		const createReferenceLine = (x: number, time: string) => {
+		// One dashed reference line per point, with its readouts (the contents
+		// are filled in by refreshGraph).
+		const referenceLabels: ReferenceLabels[] = [];
+		const referenceLineElements = xPositions.map((x) => {
 			const referenceLine = new paper.Path({
 				segments: [
-					[x, 20],
-					[x, 278],
+					[x, AXIS_TOP_Y - 10],
+					[x, AXIS_BOTTOM_Y + 3],
 				],
 				strokeColor: palette.grid,
 				strokeWidth: 1,
@@ -394,59 +430,43 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 				strokeCap: "round",
 				dashArray: [2, 6],
 			});
-
-			// Per-point temperature readout (content is set in refreshGraph).
-			const referenceText = new paper.PointText({
-				point: [x, 12],
-				content: x.toString(),
+			const temperature = new paper.PointText({
+				point: [x, AXIS_TOP_Y - 18],
+				content: "",
 				fillColor: palette.tempLabel,
 				fontSize: 11,
 				fontWeight: "600",
 				justification: "center",
 			});
-
-			const referenceTime = new paper.PointText({
-				point: [x, 292],
-				content: time,
+			const time = new paper.PointText({
+				point: [x, AXIS_BOTTOM_Y + 17],
+				content: "",
 				fillColor: palette.timeLabel,
 				fontSize: 10,
 				justification: "center",
 			});
-
-			return new paper.Group([referenceLine, referenceTime, referenceText]);
-		};
-
-		// Create reference lines using data times
-		const referenceLineElements = xPositions.map((x, index) => {
-			const time = data[index][0];
-			return createReferenceLine(x, time);
+			referenceLabels.push({ time, temperature });
+			return new paper.Group([referenceLine, time, temperature]);
 		});
+		referenceLabelsRef.current = referenceLabels;
 		const referenceLines = new paper.Group(referenceLineElements);
 		referenceLinesRef.current = referenceLines;
 
-		// Create temperature labels
-		const maxTemp = new paper.PointText({
-			point: [20, 30],
-			content: "30",
-			justification: "right",
-			fillColor: palette.axisLabel,
-		});
-
-		const midTemp = new paper.PointText({
-			point: [20, (275 + 30) / 2],
-			content: "22",
-			justification: "right",
-			fillColor: palette.axisLabel,
-		});
-
-		const minTemp = new paper.PointText({
-			point: [20, 275],
-			content: "13",
-			justification: "right",
-			fillColor: palette.axisLabel,
-		});
-
-		const temperatures = new paper.Group([maxTemp, midTemp, minTemp]);
+		// Temperature axis ticks: top, middle and bottom of the displayed range.
+		const ticks = [
+			GRAPH_MAX_TEMPERATURE,
+			(GRAPH_MAX_TEMPERATURE + GRAPH_MIN_TEMPERATURE) / 2,
+			GRAPH_MIN_TEMPERATURE,
+		].map(
+			(temperature) =>
+				new paper.PointText({
+					point: [AXIS_LEFT_X - 5, temperatureToY(temperature)],
+					content: `${temperature}`,
+					justification: "right",
+					fillColor: palette.axisLabel,
+				}),
+		);
+		const temperatures = new paper.Group(ticks);
 
 		// Group all elements (back-to-front; refreshGraph re-asserts z-order)
 		const allElements = new paper.Group([
@@ -459,25 +479,6 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		]);
 		allElementsRef.current = allElements;
 
-		// Helper function for scaled temperature conversion
-		const yToTemperatureScaled = (y: number) => {
-			return yToTemperature(y / scaleRef.current.y);
-		};
-
-		const closestCurveSegment = (point: paper.Point) => {
-			const curveSegments = curveSegmentsRef.current;
-			let closestSegment = curveSegments[0];
-			let minDistance: number | undefined;
-			curveSegments.forEach((segment) => {
-				const distance = Math.abs(segment.point.x - point.x);
-				if (distance < (minDistance || Number.MAX_VALUE)) {
-					minDistance = distance;
-					closestSegment = segment;
-				}
-			});
-			return closestSegment;
-		};
-
 		// Visually emphasise whichever handle is being dragged.
 		const setActiveNode = (activeIndex: number) => {
 			nodeItemsRef.current.forEach((node, i) => {
@@ -487,107 +488,74 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 			});
 		};
 
-		// Set up event handlers
-		const onMouseDown = (_event: paper.MouseEvent) => {
-			dragStateRef.current.isDragging = true;
-			dragStateRef.current.moved = false;
+		const onMouseDown = () => {
+			dragStateRef.current = { isDragging: true, moved: false };
 		};
 
+		// Drag anywhere: the handle nearest to the cursor's x follows its y.
 		const onMouseDrag = (event: paper.MouseEvent) => {
-			const segment = closestCurveSegment(event.point);
+			const curveSegments = curveSegmentsRef.current;
+			if (curveSegments.length === 0) return;
+			const scaleY = scaleRef.current.y;
 
-			if (!scaleRef.current) return;
-
+			const index = nearestIndex(
+				curveSegments.map((segment) => segment.point.x),
+				event.point.x,
+			);
 			dragStateRef.current.moved = true;
-			setActiveNode(curveSegmentsRef.current.indexOf(segment));
+			setActiveNode(index);
 
-			// Convert to temperature first to apply proper bounds
-			const rawY = Math.max(
-				Math.min(event.point.y, 275 * scaleRef.current.y),
-				25 * scaleRef.current.y,
+			// Clamp to the displayed range and snap to 0.5°C steps.
+			const temperature = snapTemperature(
+				clampTemperature(yToTemperature(event.point.y / scaleY)),
 			);
-			const rawTemperature = yToTemperatureScaled(rawY);
-
-			// Clamp to valid range (13°C to 30°C) and snap to 0.5°C steps.
-			const clampedTemperature = snapTemperature(
-				Math.max(13, Math.min(30, rawTemperature)),
-			);
-
-			// Convert back to Y coordinate with clamped temperature
-			const newY = temperatureToY(clampedTemperature) * scaleRef.current.y;
-
-			segment.point.y = newY;
-			curveSegmentsRef.current[
-				curveSegmentsRef.current.indexOf(segment)
-			].point.y = newY;
+			curveSegments[index].point.y = temperatureToY(temperature) * scaleY;
 			refreshGraph();
-
-			// Store the current drag state but don't call onChange yet
-			if (dragStateRef.current.isDragging) {
-				const time = xToTime(segment.point.x / scaleRef.current.x);
-				dragStateRef.current.changedPoints.set(time, clampedTemperature);
-			}
 		};
 
-		const onMouseUp = (_event: paper.MouseEvent) => {
-			if (!dragStateRef.current) return;
+		const onMouseUp = () => {
+			const { isDragging, moved } = dragStateRef.current;
+			const onChange = onChangeRef.current;
 
 			// Only persist when a handle actually moved (ignore plain clicks).
-			if (
-				dragStateRef.current.isDragging &&
-				dragStateRef.current.moved &&
-				onChange
-			) {
-				// Create updated data array based on current segment positions
+			if (isDragging && moved && onChange) {
+				const { x: scaleX, y: scaleY } = scaleRef.current;
 				const updatedData: [Time, Temperature][] = curveSegmentsRef.current.map(
-					(segment) => {
-						if (!scaleRef.current) return ["00:00", 13]; // fallback
-
-						const time = xToTime(segment.point.x / scaleRef.current.x);
-						const temperature = yToTemperature(
-							segment.point.y / scaleRef.current.y,
-						);
-						return [time, Math.round(temperature * 10) / 10];
-					},
+					(segment) => [
+						xToTime(segment.point.x / scaleX),
+						roundTemperature(yToTemperature(segment.point.y / scaleY)),
+					],
 				);
-
 				skipTweenRef.current = true;
 				onChange(updatedData);
 			}
 
-			// Reset drag state
-			dragStateRef.current.isDragging = false;
-			dragStateRef.current.moved = false;
-			dragStateRef.current.changedPoints.clear();
+			dragStateRef.current = { isDragging: false, moved: false };
 			setActiveNode(-1);
 		};
 
 		// Double-click a handle to remove it, or an empty gap to add a point.
 		const onDoubleClick = (event: paper.MouseEvent) => {
-			if (!scaleRef.current || !onChange) return;
+			const onChange = onChangeRef.current;
+			const current = dataRef.current;
+			if (!onChange || current.length === 0) return;
 			const ux = event.point.x / scaleRef.current.x;
 			const uy = event.point.y / scaleRef.current.y;
-			const positions = getXPositions(data.length);
-
-			let nearest = 0;
-			let nearestDistance = Number.MAX_VALUE;
-			positions.forEach((x, i) => {
-				const distance = Math.abs(x - ux);
-				if (distance < nearestDistance) {
-					nearestDistance = distance;
-					nearest = i;
-				}
-			});
+			const positions = getXPositions(current.length);
+			const nearest = nearestIndex(positions, ux);
 
 			// Remove the point under the cursor (keep at least MIN_POINTS).
-			if (nearestDistance < 16 && data.length > MIN_POINTS) {
+			if (
+				Math.abs(positions[nearest] - ux) < REMOVE_HIT_DISTANCE &&
+				current.length > MIN_POINTS
+			) {
 				skipTweenRef.current = true;
-				onChange(data.filter((_, i) => i !== nearest));
+				onChange(current.filter((_, i) => i !== nearest));
 				return;
 			}
 
 			// Otherwise insert a point in the gap the cursor sits in.
-			if (data.length >= MAX_POINTS) return;
+			if (current.length >= MAX_POINTS) return;
 			if (ux <= positions[0] || ux >= positions[positions.length - 1]) return;
 			let gap = 0;
 			for (let i = 0; i < positions.length - 1; i++) {
@@ -597,16 +565,14 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 				}
 			}
 			const time = minutesToTime(
-				(nightMinutes(data[gap][0]) + nightMinutes(data[gap + 1][0])) / 2,
+				(nightMinutes(current[gap][0]) + nightMinutes(current[gap + 1][0])) / 2,
 			);
-			const temperature = snapTemperature(
-				Math.max(13, Math.min(30, yToTemperature(uy))),
-			);
+			const temperature = snapTemperature(clampTemperature(yToTemperature(uy)));
 			skipTweenRef.current = true;
 			onChange([
-				...data.slice(0, gap + 1),
+				...current.slice(0, gap + 1),
 				[time, temperature],
-				...data.slice(gap + 1),
+				...current.slice(gap + 1),
 			]);
 		};
 
@@ -639,14 +605,12 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 
 	// Update graph when data changes (controlled component → animate to new data).
 	useEffect(() => {
-		if (!data || data.length === 0) return;
-		if (!graphRef.current) return;
-
+		if (data.length === 0) return;
 		const graph = graphRef.current;
-		const curveSegments = curveSegmentsRef.current;
+		if (!graph) return;
 
 		// Structural changes are handled by a remount (key includes length).
-		if (data.length !== curveSegments.length) return;
+		if (data.length !== curveSegmentsRef.current.length) return;
 
 		// A change we just produced (drag / add / remove) needs no animation.
 		if (skipTweenRef.current) {
@@ -685,7 +649,9 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 	}, [data]);
 
 	// Live "now" indicator: a vertical marker at the current time with the pod's
-	// current temperature. Redrawn when the reading, theme, or paper scope change.
+	// current temperature. Redrawn when the reading, the schedule's times, the
+	// theme, or the paper scope change.
+	const timesKey = data.map(([time]) => time).join(",");
 	useEffect(() => {
 		nowGroupRef.current?.remove();
 		nowGroupRef.current = null;
@@ -697,16 +663,17 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		const fx = timeToFractionalX(now.time);
 		if (fx === null) return;
 
-		const temperature = Math.max(13, Math.min(30, now.temperature));
-		const y = temperatureToY(temperature);
+		// The axis only spans the sleeping range: pin the marker to its edge but
+		// label the real reading.
+		const y = temperatureToY(clampTemperature(now.temperature));
 		const accent = palette.now;
 
 		const lineColor = accent.clone();
 		lineColor.alpha = 0.6;
 		const verticalLine = new paper.Path({
 			segments: [
-				[fx, 22],
-				[fx, 278],
+				[fx, AXIS_TOP_Y - 8],
+				[fx, AXIS_BOTTOM_Y + 3],
 			],
 			strokeColor: lineColor,
 			strokeWidth: 1.5,
@@ -721,8 +688,8 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		// Label sits just above its marker so it never collides with the per-point
 		// readouts along the top edge.
 		const labelPoint = new paper.PointText({
-			point: [fx, Math.max(24, y - 12)],
-			content: `now ${Math.round(temperature * 10) / 10}°`,
+			point: [fx, Math.max(AXIS_TOP_Y - 6, y - 12)],
+			content: `now ${roundTemperature(now.temperature)}°`,
 			fillColor: accent,
 			fontSize: 10,
 			fontWeight: "600",
@@ -741,7 +708,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 			nowGroupRef.current?.remove();
 			nowGroupRef.current = null;
 		};
-	}, [paper, theme, now?.time, now?.temperature]);
+	}, [paper, theme, now?.time, now?.temperature, timesKey]);
 
 	return null;
 };

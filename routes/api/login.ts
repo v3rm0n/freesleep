@@ -1,8 +1,13 @@
 import { setCookie } from "@std/http/cookie";
-import { Credentials, storeCredentials } from "../../server/credentials.ts";
-import { retrieveAccessToken } from "../../server/eightsleep_api/access_token.ts";
-import { createSession, removeSession } from "../../server/session.ts";
+import { Credentials } from "../../server/credentials.ts";
+import { requestAccessToken } from "../../server/eightsleep_api/access_token.ts";
+import { EightSleepApiError } from "../../server/eightsleep_api/http.ts";
+import type { AccessToken } from "../../server/eightsleep_api/model/index.ts";
+import { createSession } from "../../server/session.ts";
 import { define } from "../../utils.ts";
+
+// Eight Sleep statuses that mean the credentials themselves were rejected.
+const REJECTED_STATUSES = new Set([400, 401, 403]);
 
 export const handler = define.handlers({
 	async POST(ctx) {
@@ -12,25 +17,40 @@ export const handler = define.handlers({
 		if (!parsed.success) {
 			return Response.json({ message: "Invalid credentials" }, { status: 400 });
 		}
-		const data = parsed.data;
-		const id = await createSession(data);
-		const token = await storeCredentials(data, id);
+		const credentials = parsed.data;
+
+		// Verify with Eight Sleep first: nothing is stored, and no existing
+		// session is replaced, until the password is known to be right.
+		let accessToken: AccessToken;
 		try {
-			await retrieveAccessToken(token, data);
-			const res = Response.json({ success: true, token });
-			setCookie(res.headers, {
-				name: "SESSION",
-				value: token,
-				httpOnly: true,
-				secure: ctx.url.protocol === "https:",
-				sameSite: "Strict",
-				path: "/",
-			});
-			return res;
-		} catch (e) {
-			console.error(e);
-			await removeSession(data.username, id);
-			return Response.json({ message: `Failed to login: ${e}` });
+			accessToken = await requestAccessToken(credentials);
+		} catch (error) {
+			console.error(`Login failed for ${credentials.username}:`, error);
+			if (
+				error instanceof EightSleepApiError &&
+				REJECTED_STATUSES.has(error.status)
+			) {
+				return Response.json(
+					{ message: "Eight Sleep rejected these credentials" },
+					{ status: 401 },
+				);
+			}
+			return Response.json(
+				{ message: "Could not reach Eight Sleep, please try again later" },
+				{ status: 502 },
+			);
 		}
+
+		const token = await createSession(credentials, accessToken);
+		const res = Response.json({ success: true, token });
+		setCookie(res.headers, {
+			name: "SESSION",
+			value: token,
+			httpOnly: true,
+			secure: ctx.url.protocol === "https:",
+			sameSite: "Strict",
+			path: "/",
+		});
+		return res;
 	},
 });
