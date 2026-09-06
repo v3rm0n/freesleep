@@ -1,15 +1,15 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { api } from "../components/client.ts";
 import {
 	DEFAULT_SCHEDULE,
 	formatTime,
-	Graph,
 	NIGHT_CROSSOVER_HOUR,
-	type Temperature,
+	type Schedule,
 	type Time,
 } from "../components/Graph.tsx";
-import { Login } from "../components/Login.tsx";
-import PaperProvider from "../components/Paper.tsx";
+import { Login, Unavailable } from "../components/Login.tsx";
+import { LiveReading, SchedulePanel } from "../components/SchedulePanel.tsx";
+import { Notice, ThemeToggle, TopBar } from "../components/Shell.tsx";
 import { useResolvedTheme } from "../components/theme.ts";
 import type { Side } from "../server/eightsleep_api/model/index.ts";
 import type {
@@ -22,13 +22,25 @@ import {
 	temperatureToHeatingLevel,
 } from "../server/temperature.ts";
 
-type Schedule = [Time, Temperature][];
 type Schedules = Record<Side, Schedule>;
 
 const DEFAULT_SCHEDULES: Schedules = {
 	left: DEFAULT_SCHEDULE,
 	right: DEFAULT_SCHEDULE,
 };
+
+type Session =
+	| { status: "checking" }
+	| { status: "signed-out" }
+	| { status: "unavailable" }
+	| { status: "ready"; current: CurrentState };
+
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+// How often the pod's live reading is refreshed while the page is visible.
+const REFRESH_INTERVAL_MS = 60_000;
+// How long the "Saved" confirmation stays visible.
+const SAVED_NOTICE_MS = 2_000;
 
 // Schedule points travel as ISO timestamps: "HH:MM" on today's date, or on
 // tomorrow's for times before the night crossover, so a night sorts in order.
@@ -57,31 +69,88 @@ const toSchedule = ({ levels }: ExpectedStateSide): Schedule => {
 		]);
 };
 
+interface SaveIndicatorProps {
+	status: SaveStatus;
+	onRetry: () => void;
+}
+
+const SaveIndicator = ({ status, onRetry }: SaveIndicatorProps) => {
+	if (status === "idle") {
+		return null;
+	}
+	if (status === "error") {
+		return (
+			<span class="save-status save-status--error" role="alert">
+				Couldn't save
+				<button type="button" class="link-button" onClick={onRetry}>
+					Retry
+				</button>
+			</span>
+		);
+	}
+	return (
+		<span class="save-status" role="status">
+			{status === "saving" ? "Saving…" : "Saved"}
+		</span>
+	);
+};
+
 export default function App() {
-	const [currentState, setCurrentState] = useState<
-		CurrentState | null | undefined
-	>(undefined);
+	const [session, setSession] = useState<Session>({ status: "checking" });
 	const [schedules, setSchedules] = useState<Schedules>(DEFAULT_SCHEDULES);
 	const [currentSide, setCurrentSide] = useState<Side>("left");
 	const [theme, toggleTheme] = useResolvedTheme();
+	const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+	// The last change that failed to save, so it can be retried.
+	const failedSaveRef = useRef<{ side: Side; data: Schedule } | null>(null);
+	// Only the most recent save reports its outcome.
+	const saveSequenceRef = useRef(0);
 
-	const checkAuthentication = async () => {
+	// Reads the pod's current state. On the first call this decides between the
+	// app and the login screen; later calls only refresh the live reading.
+	const refreshCurrentState = async () => {
 		try {
 			const response = await api.getState();
 			if (response.ok) {
-				setCurrentState((await response.json()) as CurrentState);
+				const current = (await response.json()) as CurrentState;
+				setSession({ status: "ready", current });
+			} else if (response.status === 401) {
+				setSession({ status: "signed-out" });
 			} else {
-				setCurrentState(null);
+				console.error(`Could not read the pod's state (${response.status})`);
+				setSession((previous) =>
+					previous.status === "ready" ? previous : { status: "unavailable" },
+				);
 			}
 		} catch (error) {
-			console.error("Authentication check failed:", error);
-			setCurrentState(null);
+			console.error("Could not read the pod's state:", error);
+			setSession((previous) =>
+				previous.status === "ready" ? previous : { status: "unavailable" },
+			);
 		}
 	};
 
 	useEffect(() => {
-		checkAuthentication();
+		refreshCurrentState();
 	}, []);
+
+	const isReady = session.status === "ready";
+
+	// Keep the live reading fresh while the page is visible.
+	useEffect(() => {
+		if (!isReady) return;
+		const refreshIfVisible = () => {
+			if (document.visibilityState === "visible") {
+				refreshCurrentState();
+			}
+		};
+		const interval = setInterval(refreshIfVisible, REFRESH_INTERVAL_MS);
+		document.addEventListener("visibilitychange", refreshIfVisible);
+		return () => {
+			clearInterval(interval);
+			document.removeEventListener("visibilitychange", refreshIfVisible);
+		};
+	}, [isReady]);
 
 	const loadSchedules = async () => {
 		try {
@@ -101,179 +170,138 @@ export default function App() {
 		}
 	};
 
-	// Load the saved schedules once authenticated.
+	// Load the saved schedules once signed in.
 	useEffect(() => {
-		if (currentState) {
+		if (isReady) {
 			loadSchedules();
 		}
-	}, [currentState]);
+	}, [isReady]);
 
-	const handleLogout = async () => {
+	// Let the "Saved" confirmation fade out on its own.
+	useEffect(() => {
+		if (saveStatus !== "saved") return;
+		const timeout = setTimeout(() => setSaveStatus("idle"), SAVED_NOTICE_MS);
+		return () => clearTimeout(timeout);
+	}, [saveStatus]);
+
+	const handleSignOut = async () => {
 		try {
 			const response = await api.logout();
 			if (!response.ok) {
-				console.error("Failed to logout");
+				console.error(`Failed to sign out (${response.status})`);
 			}
 		} catch (error) {
-			console.error("Error during logout:", error);
+			console.error("Error during sign out:", error);
 		} finally {
-			setCurrentState(null);
+			setSession({ status: "signed-out" });
 			setSchedules(DEFAULT_SCHEDULES);
+			setSaveStatus("idle");
 		}
 	};
 
-	const handleTemperatureChange = async (data: Schedule) => {
-		// Controlled: adopt the new curve immediately, then persist it.
-		setSchedules((previous) => ({ ...previous, [currentSide]: data }));
+	const saveSchedule = async (side: Side, data: Schedule) => {
+		const sequence = ++saveSequenceRef.current;
+		setSaveStatus("saving");
 		try {
 			const levels = data.map(([time, temperature]) => ({
 				time: timeToISODateTime(time),
 				level: temperatureToHeatingLevel(temperature),
 			}));
-			const response = await api.setExpectedState(currentSide, { levels });
+			const response = await api.setExpectedState(side, { levels });
 			if (!response.ok) {
-				console.error(`Failed to save the schedule (${response.status})`);
+				throw new Error(`Unexpected status ${response.status}`);
+			}
+			if (sequence === saveSequenceRef.current) {
+				failedSaveRef.current = null;
+				setSaveStatus("saved");
 			}
 		} catch (error) {
 			console.error("Error saving the schedule:", error);
+			if (sequence === saveSequenceRef.current) {
+				failedSaveRef.current = { side, data };
+				setSaveStatus("error");
+			}
 		}
 	};
 
-	// Show loading state while checking authentication
-	if (currentState === undefined) {
+	const handleTemperatureChange = (data: Schedule) => {
+		// Controlled: adopt the new curve immediately, then persist it.
+		setSchedules((previous) => ({ ...previous, [currentSide]: data }));
+		saveSchedule(currentSide, data);
+	};
+
+	const retrySave = () => {
+		const failed = failedSaveRef.current;
+		if (failed) {
+			saveSchedule(failed.side, failed.data);
+		}
+	};
+
+	if (session.status === "checking") {
 		return (
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "center",
-					alignItems: "center",
-					height: "100vh",
-					fontSize: "18px",
-				}}
-			>
-				Loading...
+			<div class="app">
+				<TopBar />
+				<Notice busy>
+					<p>Checking your session…</p>
+				</Notice>
 			</div>
 		);
 	}
 
-	// Show login page if not authenticated
-	if (!currentState) {
-		return <Login onLoginSuccess={checkAuthentication} />;
+	if (session.status === "signed-out") {
+		return (
+			<Login
+				theme={theme}
+				onToggleTheme={toggleTheme}
+				onLoginSuccess={refreshCurrentState}
+			/>
+		);
 	}
 
-	const temperatureData = schedules[currentSide];
+	if (session.status === "unavailable") {
+		return (
+			<Unavailable
+				theme={theme}
+				onToggleTheme={toggleTheme}
+				onRetry={refreshCurrentState}
+			/>
+		);
+	}
+
+	const sideState = session.current[currentSide];
 	const nowMarker = {
 		time: formatTime(new Date()),
-		temperature: heatingLevelToTemperature(
-			currentState[currentSide].currentLevel.level,
-		),
+		temperature: heatingLevelToTemperature(sideState.currentLevel.level),
 	};
 
 	return (
-		<PaperProvider>
-			<div style={{ padding: "20px" }}>
-				<div
-					style={{
-						display: "flex",
-						justifyContent: "space-between",
-						alignItems: "center",
-						marginBottom: "12px",
-						gap: "10px",
-						flexWrap: "wrap",
-					}}
-				>
-					<div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-						<span style={{ fontSize: "16px", fontWeight: "500" }}>Side:</span>
-						<div
-							style={{
-								display: "flex",
-								backgroundColor: "var(--surface)",
-								border: "1px solid var(--border)",
-								borderRadius: "8px",
-								padding: "2px",
-							}}
-						>
-							{(["left", "right"] as const).map((side) => (
-								<button
-									key={side}
-									type="button"
-									onClick={() => setCurrentSide(side)}
-									style={{
-										padding: "8px 16px",
-										backgroundColor:
-											currentSide === side ? "var(--accent)" : "transparent",
-										color:
-											currentSide === side ? "var(--accent-fg)" : "var(--fg)",
-										border: "none",
-										borderRadius: "6px",
-										cursor: "pointer",
-										fontSize: "14px",
-										fontWeight: "500",
-										fontFamily: "SF Pro Display, sans-serif",
-										transition: "all 0.2s ease",
-										textTransform: "capitalize",
-									}}
-								>
-									{side}
-								</button>
-							))}
-						</div>
-					</div>
-					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-						<button
-							type="button"
-							onClick={toggleTheme}
-							aria-label="Toggle light or dark theme"
-							title="Toggle light / dark"
-							style={{
-								width: "40px",
-								height: "40px",
-								backgroundColor: "var(--surface)",
-								color: "var(--fg)",
-								border: "1px solid var(--border)",
-								borderRadius: "8px",
-								cursor: "pointer",
-								fontSize: "16px",
-							}}
-						>
-							{theme === "dark" ? "☀️" : "🌙"}
-						</button>
-						<button
-							type="button"
-							onClick={handleLogout}
-							style={{
-								padding: "10px 20px",
-								backgroundColor: "var(--danger)",
-								color: "#fff",
-								border: "none",
-								borderRadius: "8px",
-								cursor: "pointer",
-								fontSize: "14px",
-							}}
-						>
-							Logout
-						</button>
-					</div>
-				</div>
-				<p
-					style={{
-						margin: "0 0 8px",
-						textAlign: "left",
-						fontSize: "13px",
-						color: "var(--muted)",
-					}}
-				>
-					Drag a point to set its temperature · double-click to add or remove a
-					point
-				</p>
-				<Graph
-					data={temperatureData}
+		<div class="app">
+			<TopBar>
+				<ThemeToggle theme={theme} onToggle={toggleTheme} />
+				<button type="button" class="button" onClick={handleSignOut}>
+					Sign out
+				</button>
+			</TopBar>
+			<main class="main">
+				<SchedulePanel
+					side={currentSide}
+					onSideChange={setCurrentSide}
+					data={schedules[currentSide]}
 					onChange={handleTemperatureChange}
 					now={nowMarker}
 					theme={theme}
-					key={`${currentSide}-${temperatureData.length}-graph`}
+					status={
+						<>
+							<LiveReading
+								active={sideState.isHeating}
+								current={nowMarker.temperature}
+								target={heatingLevelToTemperature(sideState.targetLevel.level)}
+							/>
+							<SaveIndicator status={saveStatus} onRetry={retrySave} />
+						</>
+					}
 				/>
-			</div>
-		</PaperProvider>
+			</main>
+		</div>
 	);
 }
