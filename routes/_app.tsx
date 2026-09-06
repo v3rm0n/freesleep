@@ -14,6 +14,16 @@ export default define.page(function App({ Component, url }) {
 				<meta charset="utf-8" />
 				<meta content="width=device-width, initial-scale=1" name="viewport" />
 				<meta name="description" content={DESCRIPTION} />
+				<meta
+					name="theme-color"
+					content="#05070b"
+					media="(prefers-color-scheme: dark)"
+				/>
+				<meta
+					name="theme-color"
+					content="#eef1f6"
+					media="(prefers-color-scheme: light)"
+				/>
 				{/* Favicon (per-page <title> is set by each route's <Head>). */}
 				<link rel="icon" href="/favicon.ico" sizes="any" />
 				<link rel="icon" href="/icon.png" type="image/png" />
@@ -37,10 +47,6 @@ export default define.page(function App({ Component, url }) {
 							"if(!t){t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}" +
 							"document.documentElement.dataset.theme=t;}catch(e){}})();",
 					}}
-				/>
-				<link
-					href="https://fonts.cdnfonts.com/css/sf-pro-display"
-					rel="stylesheet"
 				/>
 			</head>
 			<body>

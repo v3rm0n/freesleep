@@ -9,8 +9,8 @@ schedule you draw yourself, and nudges the pod to follow it minute by minute.
 
 ![FreeSleep UI](/etc/screenshot.png)
 
-The graph has a sign-in-free demo at the `/demo` route — run it locally (see
-[Running locally](#running-locally)) to try it.
+The `/demo` route shows the whole UI with an in-memory schedule, no sign-in
+needed — run it locally (see [Running locally](#running-locally)) to try it.
 
 ## Features
 
@@ -19,7 +19,7 @@ The graph has a sign-in-free demo at the `/demo` route — run it locally (see
 - ➕ **Add / remove points** — double-click an empty gap to add a schedule point,
   or double-click a handle to remove it.
 - 🔴 **Live "now" marker** — see where you are in the night and the pod's current
-  temperature at a glance.
+  temperature at a glance; the reading refreshes every minute.
 - 🛏️ **Both sides** — independent schedules for the left and right side of the bed.
 - 🌗 **Light & dark themes** — follows your system preference, with a manual toggle.
 - ⏱️ **Set-and-forget** — a server-side job reconciles the pod every minute, so the
@@ -37,8 +37,9 @@ night; the fill is tinted warm where the curve is high and cool where it dips.
 | Change a temperature | Drag a handle up or down (snaps to 0.5 °C) |
 | Add a schedule point | Double-click an empty gap on the curve |
 | Remove a point | Double-click its handle |
-| Switch side | **Left / Right** toggle |
-| Switch theme | ☀️ / 🌙 toggle (top right) |
+| Switch side | **Left / Right** toggle above the graph |
+| Switch theme | Sun / moon button (top right) |
+| Sign out | **Sign out** (top right) |
 
 The same component, in light mode:
 
@@ -81,7 +82,7 @@ deno install
 deno task dev
 ```
 
-Open <http://localhost:8000/demo> to play with the graph without signing in.
+Open <http://localhost:8000/demo> to play with the UI without signing in.
 
 To run the full app the way the Docker image does (Deno KV + the every-minute
 control loop), build first and serve the output:
@@ -108,9 +109,11 @@ routes/            Fresh routes
   demo.tsx           standalone graph demo
   api/               login / logout / state / expected-state endpoints
 islands/
-  App.tsx            authenticated app: side + theme controls, wiring
-  Demo.tsx           interactive graph playground
+  App.tsx            authenticated app: session, saving, live refresh
+  Demo.tsx           the same UI with an in-memory schedule
 components/
+  Shell.tsx          top bar, theme toggle, full-page notices
+  SchedulePanel.tsx  side toggle, live pod reading and the graph panel
   Graph.tsx          the paper.js temperature graph
   Paper.tsx          lazy paper.js setup (browser-only)
   Login.tsx          sign-in form

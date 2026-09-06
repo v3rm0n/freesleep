@@ -16,9 +16,15 @@ export const usePaper = () => {
 	return context;
 };
 
-// paper.js auto-resizes a canvas that carries a `resize` attribute, and the
-// stylesheet sizes `canvas[resize]`. Preact's canvas typings don't include it,
-// so attach it via a spread.
+// Mirrors `--font` in assets/style.css. Canvas text is rasterised with
+// whatever font is available at draw time, so a system stack (nothing to
+// download) keeps the graph's labels consistent with the rest of the UI.
+export const UI_FONT_FAMILY =
+	'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+
+// paper.js auto-resizes a canvas that carries a `resize` attribute, reading
+// its CSS layout size (see `.graph-canvas`). Preact's canvas typings don't
+// include the attribute, so attach it via a spread.
 const RESIZE_ATTR = {
 	resize: "",
 } as unknown as JSX.HTMLAttributes<HTMLCanvasElement>;
@@ -48,7 +54,7 @@ export const PaperProvider = ({
 			paperScope.setup(canvasRef.current);
 			paperScope.project.currentStyle = {
 				...paperScope.project.currentStyle,
-				fontFamily: "SF Pro Display",
+				fontFamily: UI_FONT_FAMILY,
 				fontSize: 12,
 				strokeWidth: 2,
 			};
@@ -61,7 +67,14 @@ export const PaperProvider = ({
 
 	return (
 		<>
-			<canvas ref={canvasRef} {...RESIZE_ATTR} />
+			{/* The Graph fills in a description of the schedule as aria-label. */}
+			<canvas
+				ref={canvasRef}
+				class="graph-canvas"
+				role="img"
+				aria-label="Temperature schedule"
+				{...RESIZE_ATTR}
+			/>
 			{paper && (
 				<PaperContext.Provider value={{ paper }}>
 					{children}

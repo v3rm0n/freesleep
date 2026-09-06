@@ -7,21 +7,26 @@ import type { Theme } from "./theme.ts";
 export type Time = string;
 export type Temperature = number;
 
+/** A side's schedule: a wall-clock time and a temperature per point. */
+export type Schedule = [Time, Temperature][];
+
 export interface NowMarker {
 	time: Time;
 	temperature: Temperature;
 }
 
 interface GraphProps {
-	data: [Time, Temperature][];
-	onChange?: (data: [Time, Temperature][]) => void;
+	data: Schedule;
+	onChange?: (data: Schedule) => void;
 	/** Live reading: where we are in the night and the pod's current temperature. */
 	now?: NowMarker;
 	theme?: Theme;
+	/** What the schedule belongs to (e.g. "Left side"), for assistive technology. */
+	label?: string;
 }
 
 /** The curve shown for a side that has no saved schedule yet. */
-export const DEFAULT_SCHEDULE: [Time, Temperature][] = [
+export const DEFAULT_SCHEDULE: Schedule = [
 	["22:00", 18.5],
 	["00:00", 16.2],
 	["02:00", 15.0],
@@ -77,12 +82,19 @@ const clampTemperature = (t: number) =>
 	Math.max(GRAPH_MIN_TEMPERATURE, Math.min(GRAPH_MAX_TEMPERATURE, t));
 const snapTemperature = (t: number) => Math.round(t * 2) / 2; // 0.5°C steps
 const roundTemperature = (t: number) => Math.round(t * 10) / 10;
+
+/** Formats a temperature for display, e.g. "16.5°". */
+export const formatTemperature = (t: Temperature): string =>
+	`${roundTemperature(t)}°`;
 const temperatureToY = (temp: number): number =>
 	AXIS_BOTTOM_Y -
 	((temp - GRAPH_MIN_TEMPERATURE) / GRAPH_TEMPERATURE_SPAN) * AXIS_HEIGHT;
 const yToTemperature = (y: number): number =>
 	GRAPH_MIN_TEMPERATURE +
 	((AXIS_BOTTOM_Y - y) / AXIS_HEIGHT) * GRAPH_TEMPERATURE_SPAN;
+
+// Horizontal gridlines (and their labels) within the displayed range.
+const GRID_TEMPERATURES = [15, 20, 25, 30];
 
 // Below this (unscaled) y the fill/line gradient is fully "cold".
 const GRADIENT_COLD_Y = 170;
@@ -127,7 +139,13 @@ interface ReferenceLabels {
 	temperature: paper.PointText;
 }
 
-export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
+export const Graph = ({
+	data,
+	onChange,
+	now,
+	theme = "dark",
+	label,
+}: GraphProps) => {
 	const { paper } = usePaper();
 	// Latest props for the paper.js handlers, which are bound once per scene.
 	const dataRef = useRef(data);
@@ -334,9 +352,9 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		curveSegments.forEach((segment, index) => {
 			const label = labels[index];
 			if (!label) return;
-			label.temperature.content = `${roundTemperature(
+			label.temperature.content = formatTemperature(
 				yToTemperature(segment.point.y / scaleY),
-			)}°`;
+			);
 			if (current[index]) {
 				label.time.content = current[index][0];
 			}
@@ -452,29 +470,37 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		const referenceLines = new paper.Group(referenceLineElements);
 		referenceLinesRef.current = referenceLines;
 
-		// Temperature axis ticks: top, middle and bottom of the displayed range.
-		const ticks = [
-			GRAPH_MAX_TEMPERATURE,
-			(GRAPH_MAX_TEMPERATURE + GRAPH_MIN_TEMPERATURE) / 2,
-			GRAPH_MIN_TEMPERATURE,
-		].map(
-			(temperature) =>
-				new paper.PointText({
-					point: [AXIS_LEFT_X - 5, temperatureToY(temperature)],
-					content: `${temperature}`,
-					justification: "right",
-					fillColor: palette.axisLabel,
-				}),
-		);
-		const temperatures = new paper.Group(ticks);
+		// Horizontal gridlines with temperature labels, so the empty part of the
+		// plot reads as a scale rather than as a void.
+		const gridElements = GRID_TEMPERATURES.map((temperature) => {
+			const y = temperatureToY(temperature);
+			const gridLine = new paper.Path({
+				segments: [
+					[AXIS_LEFT_X, y],
+					[AXIS_RIGHT_X, y],
+				],
+				strokeColor: palette.grid,
+				strokeWidth: 1,
+			});
+			const gridLabel = new paper.PointText({
+				// Nudged down so the label centres on its line.
+				point: [AXIS_LEFT_X - 6, y + 3.5],
+				content: `${temperature}`,
+				justification: "right",
+				fillColor: palette.axisLabel,
+				fontSize: 10,
+			});
+			return new paper.Group([gridLine, gridLabel]);
+		});
+		const grid = new paper.Group(gridElements);
 
 		// Group all elements (back-to-front; refreshGraph re-asserts z-order)
 		const allElements = new paper.Group([
+			grid,
 			referenceLines,
 			graph,
 			line,
 			xAxis,
-			temperatures,
 			nodesGroup,
 		]);
 		allElementsRef.current = allElements;
@@ -619,6 +645,18 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 			return;
 		}
 
+		// Respect the motion preference: jump to the new curve instead of tweening.
+		if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+			data.forEach(([time, temperature], i) => {
+				graph.segments[i].point = new paper.Point(
+					timeToX(time) * scaleRef.current.x,
+					temperatureToY(temperature) * scaleRef.current.y,
+				);
+			});
+			refreshGraph();
+			return;
+		}
+
 		const tweenTo: Record<string, number> = {};
 		data.forEach(([time, temperature], i) => {
 			tweenTo[`segments[${i}].point.x`] = timeToX(time) * scaleRef.current.x;
@@ -647,6 +685,20 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 
 		tween.start();
 	}, [data]);
+
+	// Describe the schedule for assistive technology; the canvas itself is
+	// opaque to screen readers.
+	useEffect(() => {
+		const element = paper.view.element;
+		if (!element) return;
+		const points = data
+			.map(([time, temperature]) => `${time} ${formatTemperature(temperature)}`)
+			.join(", ");
+		const subject = label
+			? `${label} temperature schedule`
+			: "Temperature schedule";
+		element.setAttribute("aria-label", `${subject}: ${points}`);
+	}, [paper, data, label]);
 
 	// Live "now" indicator: a vertical marker at the current time with the pod's
 	// current temperature. Redrawn when the reading, the schedule's times, the
@@ -689,7 +741,7 @@ export const Graph = ({ data, onChange, now, theme = "dark" }: GraphProps) => {
 		// readouts along the top edge.
 		const labelPoint = new paper.PointText({
 			point: [fx, Math.max(AXIS_TOP_Y - 6, y - 12)],
-			content: `now ${roundTemperature(now.temperature)}°`,
+			content: `now ${formatTemperature(now.temperature)}`,
 			fillColor: accent,
 			fontSize: 10,
 			fontWeight: "600",
